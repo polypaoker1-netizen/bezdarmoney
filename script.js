@@ -1,240 +1,281 @@
-// Данные пользователя
-let userData = {
+// Данные игрока
+let player = {
     balance: 1000,
     gamesPlayed: 0,
     totalWins: 0,
-    bestWin: 0,
-    userId: 'user_' + Math.random().toString(36).substr(2, 9)
+    bestWin: 0
 };
-
-// История
-let gameHistory = [];
-let depositHistory = [];
-let withdrawHistory = [];
-
-// Админ пароль
-const ADMIN_PASSWORD = 'admin123';
-const TON_WALLET = 'UQB_SEDoL3M_1ZdIZ7NU6cj0usA5hQQtwlzQGdCKacxsSmM';
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
-    loadUserData();
-    loadHistory();
     updateUI();
-    showSection('games');
 });
 
-// Загрузка данных
-function loadUserData() {
-    const saved = localStorage.getItem('bezdarUser');
-    if (saved) {
-        userData = JSON.parse(saved);
-    }
-    updateBalanceDisplay();
-}
-
-function loadHistory() {
-    const saved = localStorage.getItem('bezdarHistory');
-    if (saved) {
-        const history = JSON.parse(saved);
-        gameHistory = history.games || [];
-        depositHistory = history.deposits || [];
-        withdrawHistory = history.withdrawals || [];
-    }
-}
-
-function saveHistory() {
-    const history = {
-        games: gameHistory,
-        deposits: depositHistory,
-        withdrawals: withdrawHistory
-    };
-    localStorage.setItem('bezdarHistory', JSON.stringify(history));
-}
-
-// Обновление UI
+// Обновление интерфейса
 function updateUI() {
-    document.getElementById('balance').textContent = userData.balance;
-    document.getElementById('games-played').textContent = userData.gamesPlayed;
-    document.getElementById('total-wins').textContent = userData.totalWins;
-    document.getElementById('best-win').textContent = userData.bestWin;
-    
-    // Профиль
-    document.getElementById('profileId').textContent = userData.userId.substr(0, 8);
-    document.getElementById('profileBalance').textContent = userData.balance;
-    document.getElementById('profileGamesPlayed').textContent = userData.gamesPlayed;
-    document.getElementById('profileTotalWins').textContent = userData.totalWins;
-    document.getElementById('profileBestWin').textContent = userData.bestWin;
-    
-    // Баланс для вывода
-    document.getElementById('availableBalance').textContent = userData.balance;
-    document.getElementById('availableTon').textContent = (userData.balance * 0.015).toFixed(2);
-    
-    updateBalanceDisplay();
+    document.getElementById('balance').textContent = player.balance;
+    document.getElementById('games-played').textContent = player.gamesPlayed;
+    document.getElementById('total-wins').textContent = player.totalWins;
+    document.getElementById('best-win').textContent = player.bestWin;
 }
 
-function updateBalanceDisplay() {
-    localStorage.setItem('bezdarUser', JSON.stringify(userData));
+// Показать главное меню
+function showMainGames() {
+    const main = document.querySelector('main');
+    main.innerHTML = `
+        <div class="games-section">
+            <div class="games-header">
+                <h2><i class="fas fa-gamepad"></i> Выберите игру</h2>
+                <div class="stats-bar">
+                    <div class="stat">
+                        <span class="stat-label">Игр:</span>
+                        <span id="games-played">${player.gamesPlayed}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Выиграно:</span>
+                        <span id="total-wins">${player.totalWins}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Рекорд:</span>
+                        <span id="best-win">${player.bestWin}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="games-grid">
+                <div class="game-card" onclick="openRoulette()">
+                    <div class="game-icon roulette-icon">
+                        <i class="fas fa-roulette-wheel"></i>
+                    </div>
+                    <h3>РУЛЕТКА</h3>
+                    <p>Красное / Чёрное / Зелёное</p>
+                    <div class="game-multiplier">до x36</div>
+                </div>
+
+                <div class="game-card" onclick="openSlots()">
+                    <div class="game-icon slots-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <h3>СЛОТЫ</h3>
+                    <p>777 Джекпот</p>
+                    <div class="game-multiplier">до x100</div>
+                </div>
+
+                <div class="game-card" onclick="openMines()">
+                    <div class="game-icon mines-icon">
+                        <i class="fas fa-gem"></i>
+                    </div>
+                    <h3>MINES</h3>
+                    <p>Найди алмазы</p>
+                    <div class="game-multiplier">до x100</div>
+                </div>
+
+                <div class="game-card" onclick="openDice()">
+                    <div class="game-icon dice-icon">
+                        <i class="fas fa-dice"></i>
+                    </div>
+                    <h3>DICE</h3>
+                    <p>Угадай число</p>
+                    <div class="game-multiplier">до x99</div>
+                </div>
+
+                <div class="game-card" onclick="openCrash()">
+                    <div class="game-icon crash-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>CRASH</h3>
+                    <p>Успей забрать</p>
+                    <div class="game-multiplier">до x1000</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    updateUI();
 }
 
-// Навигация по секциям
-function showSection(sectionId) {
-    // Скрыть все секции
-    document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
-    });
+// Показать статистику
+function openStats() {
+    const main = document.querySelector('main');
+    main.innerHTML = `
+        <button class="back-btn" onclick="showMainGames()">
+            <i class="fas fa-arrow-left"></i> Назад
+        </button>
+        
+        <div class="game-screen">
+            <h2><i class="fas fa-chart-bar"></i> Статистика</h2>
+            
+            <div class="stats-card">
+                <div class="stat-item">
+                    <span>Баланс</span>
+                    <strong>${player.balance} звёзд</strong>
+                </div>
+                <div class="stat-item">
+                    <span>Всего игр</span>
+                    <strong>${player.gamesPlayed}</strong>
+                </div>
+                <div class="stat-item">
+                    <span>Всего выиграно</span>
+                    <strong>${player.totalWins} звёзд</strong>
+                </div>
+                <div class="stat-item">
+                    <span>Лучший выигрыш</span>
+                    <strong>${player.bestWin} звёзд</strong>
+                </div>
+                <div class="stat-item">
+                    <span>Процент побед</span>
+                    <strong>${player.gamesPlayed > 0 ? Math.round((player.totalWins / (player.gamesPlayed * 100)) * 100) : 0}%</strong>
+                </div>
+            </div>
+        </div>
+    `;
     
-    // Скрыть все игры
-    document.querySelectorAll('.game-window').forEach(game => {
-        game.style.display = 'none';
-    });
-    
-    // Показать выбранную секцию
-    document.getElementById(sectionId + 'Section').classList.add('active');
-    
-    // Обновить активную кнопку навигации
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Обновить историю если нужно
-    if (sectionId === 'history') {
-        loadHistoryData();
-    }
+    // Добавляем стили для карточки статистики
+    const style = document.createElement('style');
+    style.textContent = `
+        .stats-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-item span {
+            color: #aaa;
+        }
+        
+        .stat-item strong {
+            color: #ffd700;
+            font-size: 1.2rem;
+        }
+    `;
+    document.head.appendChild(style);
 }
-
-// ИГРЫ
 
 // РУЛЕТКА
 function openRoulette() {
-    showSection('games');
-    const gamesSection = document.getElementById('gamesSection');
-    
-    gamesSection.innerHTML = `
-        <button class="game-back-btn" onclick="showSection('games')">
-            <i class="fas fa-arrow-left"></i> Назад к играм
+    const main = document.querySelector('main');
+    main.innerHTML = `
+        <button class="back-btn" onclick="showMainGames()">
+            <i class="fas fa-arrow-left"></i> Назад
         </button>
         
-        <div class="roulette-container">
+        <div class="game-screen">
             <h2><i class="fas fa-roulette-wheel"></i> РУЛЕТКА</h2>
             
             <div class="bet-controls">
                 <div class="bet-amount">
-                    <p>Ставка в звёздах:</p>
-                    <input type="number" id="rouletteBet" value="100" min="10" max="${userData.balance}" style="
-                        width: 100px;
-                        padding: 10px;
-                        background: rgba(255,255,255,0.1);
-                        border: 2px solid #ffd700;
-                        border-radius: 10px;
-                        color: white;
-                        text-align: center;
-                        font-size: 1.2rem;
-                        margin: 10px 0;
-                    ">
+                    <span>Ставка:</span>
+                    <input type="number" id="rouletteBet" value="100" min="10" max="${player.balance}"> звёзд
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p>Выберите ставку:</p>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="bet-btn" onclick="selectRouletteBet('red')" style="background:#dc3545;">Красное (x2)</button>
+                        <button class="bet-btn" onclick="selectRouletteBet('black')" style="background:#343a40;">Чёрное (x2)</button>
+                        <button class="bet-btn" onclick="selectRouletteBet('green')" style="background:#28a745;">Зелёное (x14)</button>
+                    </div>
                 </div>
             </div>
             
-            <div class="bet-controls">
-                <button class="bet-option bet-red" onclick="selectRouletteBet('red')">
-                    Красное (x2)
-                </button>
-                <button class="bet-option bet-black" onclick="selectRouletteBet('black')">
-                    Чёрное (x2)
-                </button>
-                <button class="bet-option bet-green" onclick="selectRouletteBet('green')">
-                    Зелёное (x14)
-                </button>
+            <div style="text-align:center; margin: 30px 0;">
+                <div id="rouletteResult" class="result-display">─</div>
             </div>
             
-            <div class="roulette-wheel" id="rouletteWheel">
-                <div class="roulette-pointer"></div>
-            </div>
-            
-            <div id="rouletteResult" class="roulette-result"></div>
-            
-            <button class="spin-btn" onclick="spinRoulette()" id="spinBtn">
+            <button class="game-btn" onclick="spinRoulette()">
                 <i class="fas fa-play"></i> Крутить рулетку
             </button>
         </div>
     `;
     
-    // Сброс выбора
     rouletteSelectedBet = null;
-    document.querySelectorAll('.bet-option').forEach(btn => {
-        btn.classList.remove('active');
-    });
+    
+    // Добавляем стили для кнопок ставок
+    const style = document.createElement('style');
+    style.textContent = `
+        .bet-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .bet-btn:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+        
+        .bet-btn.active {
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 let rouletteSelectedBet = null;
-let isRouletteSpinning = false;
 
 function selectRouletteBet(betType) {
     rouletteSelectedBet = betType;
     
-    document.querySelectorAll('.bet-option').forEach(btn => {
+    document.querySelectorAll('.bet-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     
-    if (betType === 'red') {
-        document.querySelector('.bet-red').classList.add('active');
-    } else if (betType === 'black') {
-        document.querySelector('.bet-black').classList.add('active');
-    } else if (betType === 'green') {
-        document.querySelector('.bet-green').classList.add('active');
-    }
+    event.target.classList.add('active');
 }
 
 function spinRoulette() {
-    if (isRouletteSpinning) return;
-    
     const bet = parseInt(document.getElementById('rouletteBet').value);
     
     if (!rouletteSelectedBet) {
-        showResultMessage('Выберите ставку!', 'error');
+        showMessage('Выберите ставку!', 'error');
         return;
     }
     
-    if (bet > userData.balance) {
-        showResultMessage('Недостаточно звёзд!', 'error');
+    if (bet > player.balance) {
+        showMessage('Недостаточно звёзд!', 'error');
         return;
     }
     
-    isRouletteSpinning = true;
-    const spinBtn = document.getElementById('spinBtn');
-    spinBtn.disabled = true;
-    spinBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Крутится...';
+    const resultNumber = Math.floor(Math.random() * 37);
+    let resultColor;
     
-    // Анимация вращения
-    const wheel = document.getElementById('rouletteWheel');
-    wheel.classList.add('spinning');
+    if (resultNumber === 0) {
+        resultColor = 'green';
+    } else if (resultNumber % 2 === 0) {
+        resultColor = 'black';
+    } else {
+        resultColor = 'red';
+    }
     
-    // Определяем результат
+    let multiplier = 0;
+    if (rouletteSelectedBet === resultColor) {
+        multiplier = resultColor === 'green' ? 14 : 2;
+    }
+    
+    const win = bet * multiplier;
+    const resultDiv = document.getElementById('rouletteResult');
+    
+    resultDiv.className = multiplier > 0 ? 'result-display win' : 'result-display lose';
+    
     setTimeout(() => {
-        wheel.classList.remove('spinning');
-        
-        const resultNumber = Math.floor(Math.random() * 37);
-        let resultColor;
-        
-        if (resultNumber === 0) {
-            resultColor = 'green';
-        } else if (resultNumber % 2 === 0) {
-            resultColor = 'black';
-        } else {
-            resultColor = 'red';
-        }
-        
-        // Определяем множитель
-        let multiplier = 0;
-        if (rouletteSelectedBet === resultColor) {
-            multiplier = resultColor === 'green' ? 14 : 2;
-        }
-        
-        const win = bet * multiplier;
-        const resultDiv = document.getElementById('rouletteResult');
-        
-        // Показываем результат
-        resultDiv.className = `roulette-result result-${resultColor}`;
         resultDiv.innerHTML = `
             <div>Выпало: <strong>${resultNumber}</strong></div>
             <div>Цвет: <strong style="color:${
@@ -243,95 +284,56 @@ function spinRoulette() {
             }">${resultColor === 'red' ? 'КРАСНОЕ' : resultColor === 'black' ? 'ЧЁРНОЕ' : 'ЗЕЛЁНОЕ'}</strong></div>
         `;
         
-        // Обрабатываем результат
         setTimeout(() => {
             if (multiplier > 0) {
-                userData.balance += win;
-                userData.totalWins += win;
-                userData.bestWin = Math.max(userData.bestWin, win);
+                player.balance += win;
+                player.totalWins += win;
+                player.bestWin = Math.max(player.bestWin, win);
                 
-                resultDiv.innerHTML += `<div style="margin-top:10px;color:#28a745;font-size:1.5rem;">🏆 ВЫИГРЫШ: ${win} звёзд (x${multiplier})</div>`;
-                showResultMessage(`🎉 Поздравляем! Вы выиграли ${win} звёзд!`, 'win');
+                resultDiv.innerHTML += `<div style="margin-top:10px;font-size:1.5rem;">🏆 +${win} звёзд (x${multiplier})</div>`;
+                showMessage(`🎉 Победа! +${win} звёзд`, 'win');
             } else {
-                userData.balance -= bet;
-                resultDiv.innerHTML += `<div style="margin-top:10px;color:#dc3545;font-size:1.5rem;">💸 ПРОИГРЫШ: ${bet} звёзд</div>`;
-                showResultMessage(`😢 Вы проиграли ${bet} звёзд`, 'lose');
+                player.balance -= bet;
+                resultDiv.innerHTML += `<div style="margin-top:10px;font-size:1.5rem;">💸 -${bet} звёзд</div>`;
+                showMessage(`😢 Проигрыш! -${bet} звёзд`, 'lose');
             }
             
-            userData.gamesPlayed++;
-            
-            // Сохраняем в историю
-            gameHistory.unshift({
-                game: 'Рулетка',
-                bet: bet,
-                result: multiplier > 0 ? 'win' : 'lose',
-                amount: multiplier > 0 ? win : -bet,
-                multiplier: multiplier,
-                details: `Число: ${resultNumber}, Цвет: ${resultColor}`,
-                date: new Date().toLocaleString()
-            });
-            
-            saveHistory();
+            player.gamesPlayed++;
             updateUI();
-            
-            isRouletteSpinning = false;
-            spinBtn.disabled = false;
-            spinBtn.innerHTML = '<i class="fas fa-play"></i> Крутить рулетку';
-            
         }, 1000);
-        
-    }, 2000);
+    }, 500);
 }
 
 // СЛОТЫ
 function openSlots() {
-    showSection('games');
-    const gamesSection = document.getElementById('gamesSection');
-    
-    gamesSection.innerHTML = `
-        <button class="game-back-btn" onclick="showSection('games')">
-            <i class="fas fa-arrow-left"></i> Назад к играм
+    const main = document.querySelector('main');
+    main.innerHTML = `
+        <button class="back-btn" onclick="showMainGames()">
+            <i class="fas fa-arrow-left"></i> Назад
         </button>
         
-        <div class="slots-container">
-            <div class="slots-header">
-                <div>
-                    <h2><i class="fas fa-sliders-h"></i> BezdarA СЛОТЫ</h2>
-                    <p>Ставка в звёздах: 
-                        <input type="number" id="slotsBet" value="100" min="10" max="${userData.balance}" style="
-                            width: 80px;
-                            padding: 5px;
-                            background: rgba(255,255,255,0.1);
-                            border: 1px solid #ffd700;
-                            border-radius: 5px;
-                            color: white;
-                            text-align: center;
-                        ">
-                    </p>
-                </div>
-                <div class="bonus-badge">
-                    Бонус: 500 звёзд
+        <div class="game-screen">
+            <h2><i class="fas fa-sliders-h"></i> СЛОТЫ</h2>
+            
+            <div class="bet-controls">
+                <div class="bet-amount">
+                    <span>Ставка:</span>
+                    <input type="number" id="slotsBet" value="100" min="10" max="${player.balance}"> звёзд
                 </div>
             </div>
             
-            <div class="slots-reels">
-                <div class="reel" id="reel1">7</div>
-                <div class="reel" id="reel2">7</div>
-                <div class="reel" id="reel3">7</div>
-                <div class="reel" id="reel4">7</div>
-                <div class="reel" id="reel5">7</div>
+            <div style="text-align:center; margin: 30px 0;">
+                <div class="slots-reels" style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
+                    <div class="reel" id="reel1" style="width:60px;height:60px;background:white;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:2rem;">7</div>
+                    <div class="reel" id="reel2" style="width:60px;height:60px;background:white;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:2rem;">7</div>
+                    <div class="reel" id="reel3" style="width:60px;height:60px;background:white;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:2rem;">7</div>
+                </div>
+                <div id="slotsResult" class="result-display">─</div>
             </div>
             
-            <div id="slotsResult" style="font-size:1.5rem;margin:20px 0;"></div>
-            
-            <div class="slots-controls">
-                <button class="spin-slots-btn" onclick="spinSlots()">
-                    <i class="fas fa-play"></i> Крутить
-                </button>
-                <button class="bonus-btn" onclick="claimBonus()">
-                    <i class="fas fa-gift"></i> Бонус
-                </button>
-            </div>
+            <button class="game-btn" onclick="spinSlots()">
+                <i class="fas fa-play"></i> Крутить слоты
+            </button>
         </div>
     `;
 }
@@ -339,153 +341,123 @@ function openSlots() {
 function spinSlots() {
     const bet = parseInt(document.getElementById('slotsBet').value);
     
-    if (bet > userData.balance) {
-        showResultMessage('Недостаточно звёзд!', 'error');
+    if (bet > player.balance) {
+        showMessage('Недостаточно звёзд!', 'error');
         return;
     }
     
     // Анимация вращения
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 3; i++) {
         const reel = document.getElementById(`reel${i}`);
-        reel.classList.add('spinning');
+        reel.style.animation = 'shake 0.1s infinite';
     }
     
-    // Результат через 1.5 секунды
     setTimeout(() => {
-        const symbols = ['7', '🍒', '🍋', '⭐', '💎', '🔔'];
+        const symbols = ['7', '🍒', '🍋', '⭐', '💎'];
         const results = [];
         
-        for (let i = 1; i <= 5; i++) {
+        for (let i = 1; i <= 3; i++) {
             const reel = document.getElementById(`reel${i}`);
-            reel.classList.remove('spinning');
+            reel.style.animation = 'none';
             
             const symbol = symbols[Math.floor(Math.random() * symbols.length)];
             results.push(symbol);
             reel.textContent = symbol;
         }
         
-        // Проверяем выигрышные комбинации
+        // Проверяем комбинации
         let multiplier = 0;
         let winMessage = '';
         
-        // Проверка на 5 одинаковых
-        if (results.every(s => s === results[0])) {
+        if (results[0] === results[1] && results[1] === results[2]) {
             if (results[0] === '7') {
                 multiplier = 100;
-                winMessage = 'ДЖЕКПОТ! 5x7';
+                winMessage = 'ДЖЕКПОТ 777!';
             } else if (results[0] === '💎') {
                 multiplier = 50;
-                winMessage = '5 алмазов!';
+                winMessage = '3 АЛМАЗА!';
             } else {
-                multiplier = 20;
-                winMessage = '5 одинаковых символов!';
+                multiplier = 10;
+                winMessage = '3 в ряд!';
             }
-        }
-        // Проверка на 4 одинаковых
-        else if (results.slice(0,4).every(s => s === results[0]) || 
-                 results.slice(1,5).every(s => s === results[1])) {
-            multiplier = 10;
-            winMessage = '4 одинаковых символа!';
-        }
-        // Проверка на 3 одинаковых
-        else if ((results[0] === results[1] && results[1] === results[2]) ||
-                 (results[1] === results[2] && results[2] === results[3]) ||
-                 (results[2] === results[3] && results[3] === results[4])) {
-            multiplier = 5;
-            winMessage = '3 одинаковых символа!';
-        }
-        // Проверка на 2 одинаковых
-        else if (results.some((s, i) => results.indexOf(s) !== i)) {
+        } else if (results[0] === results[1] || results[1] === results[2]) {
             multiplier = 2;
-            winMessage = '2 одинаковых символа!';
+            winMessage = '2 одинаковых!';
         }
         
         const win = bet * multiplier;
         const resultDiv = document.getElementById('slotsResult');
         
-        if (multiplier > 0) {
-            userData.balance += win;
-            userData.totalWins += win;
-            userData.bestWin = Math.max(userData.bestWin, win);
+        resultDiv.className = multiplier > 0 ? 'result-display win' : 'result-display lose';
+        
+        setTimeout(() => {
+            resultDiv.innerHTML = `${winMessage}<br>${results.join(' ')}`;
             
-            resultDiv.innerHTML = `<div style="color:#28a745;font-weight:bold;">${winMessage}<br>Выигрыш! ${win} звёзд (x${multiplier})</div>`;
-            showResultMessage(`🎰 ${winMessage} Вы выиграли ${win} звёзд!`, 'win');
-        } else {
-            userData.balance -= bet;
-            resultDiv.innerHTML = `<div style="color:#dc3545;">💸 Вы проиграли ${bet} звёзд</div>`;
-            showResultMessage(`😢 Вы проиграли ${bet} звёзд`, 'lose');
+            setTimeout(() => {
+                if (multiplier > 0) {
+                    player.balance += win;
+                    player.totalWins += win;
+                    player.bestWin = Math.max(player.bestWin, win);
+                    
+                    resultDiv.innerHTML += `<div style="margin-top:10px;font-size:1.5rem;">🏆 +${win} звёзд (x${multiplier})</div>`;
+                    showMessage(`🎰 ${winMessage} +${win} звёзд`, 'win');
+                } else {
+                    player.balance -= bet;
+                    resultDiv.innerHTML += `<div style="margin-top:10px;font-size:1.5rem;">💸 -${bet} звёзд</div>`;
+                    showMessage(`😢 Проигрыш! -${bet} звёзд`, 'lose');
+                }
+                
+                player.gamesPlayed++;
+                updateUI();
+            }, 1000);
+        }, 500);
+        
+    }, 1000);
+    
+    // Добавляем анимацию
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes shake {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
-        
-        userData.gamesPlayed++;
-        
-        // Сохраняем в историю
-        gameHistory.unshift({
-            game: 'Слоты',
-            bet: bet,
-            result: multiplier > 0 ? 'win' : 'lose',
-            amount: multiplier > 0 ? win : -bet,
-            multiplier: multiplier,
-            details: `Результат: ${results.join(' ')} - ${winMessage}`,
-            date: new Date().toLocaleString()
-        });
-        
-        saveHistory();
-        updateUI();
-        
-    }, 1500);
-}
-
-function claimBonus() {
-    if (userData.gamesPlayed >= 10 && userData.gamesPlayed % 10 === 0) {
-        userData.balance += 500;
-        updateUI();
-        showResultMessage('🎁 Бонус 500 звёзд получен!', 'win');
-    } else {
-        showResultMessage('Бонус доступен каждые 10 игр', 'error');
-    }
+    `;
+    document.head.appendChild(style);
 }
 
 // MINES
 function openMines() {
-    showSection('games');
-    const gamesSection = document.getElementById('gamesSection');
-    
-    gamesSection.innerHTML = `
-        <button class="game-back-btn" onclick="showSection('games')">
-            <i class="fas fa-arrow-left"></i> Назад к играм
+    const main = document.querySelector('main');
+    main.innerHTML = `
+        <button class="back-btn" onclick="showMainGames()">
+            <i class="fas fa-arrow-left"></i> Назад
         </button>
         
-        <div class="mines-container">
+        <div class="game-screen">
             <h2><i class="fas fa-gem"></i> MINES</h2>
             
-            <div class="mines-controls">
+            <div class="bet-controls">
                 <div class="bet-amount">
-                    <p>Ставка:</p>
-                    <input type="number" id="minesBet" value="100" min="10" max="${userData.balance}" style="
-                        width: 100px;
-                        padding: 10px;
-                        background: rgba(255,255,255,0.1);
-                        border: 2px solid #ffd700;
-                        border-radius: 10px;
-                        color: white;
-                        text-align: center;
-                        font-size: 1.2rem;
-                    ">
+                    <span>Ставка:</span>
+                    <input type="number" id="minesBet" value="100" min="10" max="${player.balance}"> звёзд
                 </div>
                 
-                <div class="mines-count">
+                <div style="margin: 20px 0;">
                     <p>Количество мин:</p>
-                    <button class="count-btn" onclick="changeMinesCount(-1)">-</button>
-                    <span id="minesCount" style="font-size:1.5rem;margin:0 10px;">6</span>
-                    <button class="count-btn" onclick="changeMinesCount(1)">+</button>
+                    <div style="display:flex; align-items:center; gap:15px; margin-top:10px;">
+                        <button onclick="changeMines(-1)" style="width:40px;height:40px;background:rgba(255,255,255,0.1);border:none;border-radius:50%;color:white;font-size:1.5rem;">-</button>
+                        <span id="minesCount" style="font-size:1.5rem;">3</span>
+                        <button onclick="changeMines(1)" style="width:40px;height:40px;background:rgba(255,255,255,0.1);border:none;border-radius:50%;color:white;font-size:1.5rem;">+</button>
+                    </div>
                 </div>
             </div>
             
-            <div class="mines-grid" id="minesGrid"></div>
+            <div style="text-align:center; margin: 30px 0;">
+                <div id="minesGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:300px;margin:0 auto;"></div>
+                <div id="minesResult" class="result-display" style="margin-top:20px;">─</div>
+            </div>
             
-            <div id="minesResult" style="font-size:1.5rem;margin:20px 0;"></div>
-            
-            <button class="start-mines-btn" onclick="startMinesGame()" id="minesStartBtn">
+            <button class="game-btn" onclick="startMines()" id="minesBtn">
                 <i class="fas fa-play"></i> Начать игру
             </button>
         </div>
@@ -494,14 +466,14 @@ function openMines() {
     createMinesGrid();
 }
 
-let minesCount = 6;
-let minesGameActive = false;
+let minesCount = 3;
+let minesActive = false;
+let minesBet = 0;
 let minesGrid = [];
 let minesRevealed = 0;
-let minesBetAmount = 0;
 
-function changeMinesCount(delta) {
-    minesCount = Math.max(3, Math.min(15, minesCount + delta));
+function changeMines(delta) {
+    minesCount = Math.max(1, Math.min(10, minesCount + delta));
     document.getElementById('minesCount').textContent = minesCount;
 }
 
@@ -512,26 +484,40 @@ function createMinesGrid() {
     for (let i = 0; i < 25; i++) {
         const cell = document.createElement('div');
         cell.className = 'mine-cell';
+        cell.style.width = '50px';
+        cell.style.height = '50px';
+        cell.style.background = 'linear-gradient(45deg, #007bff, #6610f2)';
+        cell.style.borderRadius = '10px';
+        cell.style.display = 'flex';
+        cell.style.alignItems = 'center';
+        cell.style.justifyContent = 'center';
+        cell.style.cursor = 'pointer';
+        cell.style.fontSize = '1.5rem';
         cell.textContent = '?';
         cell.dataset.index = i;
-        cell.onclick = () => revealMineCell(i);
+        cell.onclick = () => clickMineCell(i);
         grid.appendChild(cell);
     }
 }
 
-function startMinesGame() {
-    if (minesGameActive) return;
-    
-    const bet = parseInt(document.getElementById('minesBet').value);
-    
-    if (bet > userData.balance) {
-        showResultMessage('Недостаточно звёзд!', 'error');
+function startMines() {
+    if (minesActive) {
+        cashoutMines();
         return;
     }
     
-    minesBetAmount = bet;
-    minesGameActive = true;
+    const bet = parseInt(document.getElementById('minesBet').value);
+    
+    if (bet > player.balance) {
+        showMessage('Недостаточно звёзд!', 'error');
+        return;
+    }
+    
+    minesBet = bet;
+    minesActive = true;
     minesRevealed = 0;
+    player.balance -= bet;
+    updateUI();
     
     // Создаем поле с минами
     minesGrid = Array(25).fill(false);
@@ -545,44 +531,33 @@ function startMinesGame() {
         }
     }
     
-    // Обновляем кнопку
-    document.getElementById('minesStartBtn').innerHTML = '<i class="fas fa-gem"></i> Игра идёт...';
-    document.getElementById('minesStartBtn').onclick = cashoutMines;
+    document.getElementById('minesBtn').innerHTML = '<i class="fas fa-money-bill-wave"></i> Забрать деньги';
+    document.getElementById('minesResult').textContent = 'Найдите алмазы!';
     
     // Сбрасываем ячейки
-    const cells = document.querySelectorAll('.mine-cell');
-    cells.forEach(cell => {
+    document.querySelectorAll('.mine-cell').forEach(cell => {
         cell.textContent = '?';
-        cell.className = 'mine-cell';
+        cell.style.background = 'linear-gradient(45deg, #007bff, #6610f2)';
         cell.style.cursor = 'pointer';
     });
-    
-    document.getElementById('minesResult').innerHTML = '';
-    showResultMessage(`Игра началась! Найдите ${25 - minesCount} алмазов`, 'info');
 }
 
-function revealMineCell(index) {
-    if (!minesGameActive) return;
+function clickMineCell(index) {
+    if (!minesActive) return;
     
     const cell = document.querySelector(`.mine-cell[data-index="${index}"]`);
     
-    if (cell.classList.contains('revealed') || cell.classList.contains('mine')) {
-        return;
-    }
+    if (cell.textContent !== '?') return;
     
     if (minesGrid[index]) {
         // МИНА!
-        cell.className = 'mine-cell mine';
         cell.textContent = '💥';
-        cell.style.cursor = 'default';
-        
+        cell.style.background = 'linear-gradient(45deg, #dc3545, #c82333)';
         endMinesGame(false);
     } else {
         // АЛМАЗ
-        cell.className = 'mine-cell revealed';
         cell.textContent = '💎';
-        cell.style.cursor = 'default';
-        
+        cell.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
         minesRevealed++;
         
         // Проверяем победу
@@ -593,523 +568,296 @@ function revealMineCell(index) {
 }
 
 function cashoutMines() {
-    if (!minesGameActive || minesRevealed === 0) return;
-    
+    if (!minesActive || minesRevealed === 0) return;
     endMinesGame(true, true);
 }
 
 function endMinesGame(win, cashout = false) {
-    minesGameActive = false;
+    minesActive = false;
     
     // Показываем все мины
-    const cells = document.querySelectorAll('.mine-cell');
-    cells.forEach((cell, index) => {
-        if (minesGrid[index] && !cell.classList.contains('mine')) {
-            cell.className = 'mine-cell mine';
+    document.querySelectorAll('.mine-cell').forEach((cell, index) => {
+        if (minesGrid[index] && cell.textContent !== '💥') {
             cell.textContent = '💣';
+            cell.style.background = 'linear-gradient(45deg, #dc3545, #c82333)';
         }
         cell.style.cursor = 'default';
     });
     
     // Вычисляем выигрыш
     let multiplier = 0;
-    let winAmount = 0;
     
     if (win) {
-        // Формула выигрыша: чем больше мин и больше открыто клеток, тем выше множитель
-        const baseMultiplier = 1 + (minesCount / 5);
+        const baseMultiplier = 1 + (minesCount / 3);
         multiplier = cashout ? 
             (baseMultiplier * (minesRevealed / (25 - minesCount))).toFixed(2) :
-            (baseMultiplier * 2).toFixed(2);
-        
-        winAmount = Math.floor(minesBetAmount * multiplier);
-        userData.balance += winAmount;
-        userData.totalWins += winAmount;
-        userData.bestWin = Math.max(userData.bestWin, winAmount);
-        
-        document.getElementById('minesResult').innerHTML = 
-            `<div style="color:#28a745;font-weight:bold;">${cashout ? 'Вы забрали деньги!' : 'Вы выиграли!'} ${winAmount} звёзд (x${multiplier})</div>`;
-        
-        showResultMessage(cashout ? 
-            `💰 Вы забрали ${winAmount} звёзд!` : 
-            `🎉 Поздравляем! Вы выиграли ${winAmount} звёзд!`, 'win');
-    } else {
-        userData.balance -= minesBetAmount;
-        document.getElementById('minesResult').innerHTML = 
-            `<div style="color:#dc3545;">💥 Вы проиграли ${minesBetAmount} звёзд</div>`;
-        showResultMessage(`😢 Мина! Вы проиграли ${minesBetAmount} звёзд`, 'lose');
+            baseMultiplier * 2;
     }
     
-    userData.gamesPlayed++;
+    const winAmount = Math.floor(minesBet * multiplier);
+    const resultDiv = document.getElementById('minesResult');
     
-    // Сохраняем в историю
-    gameHistory.unshift({
-        game: 'Mines',
-        bet: minesBetAmount,
-        result: win ? 'win' : 'lose',
-        amount: win ? winAmount : -minesBetAmount,
-        multiplier: win ? parseFloat(multiplier) : 0,
-        details: `Мин: ${minesCount}, Открыто: ${minesRevealed}`,
-        date: new Date().toLocaleString()
-    });
+    resultDiv.className = win ? 'result-display win' : 'result-display lose';
     
-    saveHistory();
-    updateUI();
-    
-    // Восстанавливаем кнопку
-    document.getElementById('minesStartBtn').innerHTML = '<i class="fas fa-play"></i> Начать игру';
-    document.getElementById('minesStartBtn').onclick = startMinesGame;
+    setTimeout(() => {
+        if (win) {
+            player.balance += winAmount;
+            player.totalWins += winAmount;
+            player.bestWin = Math.max(player.bestWin, winAmount);
+            
+            resultDiv.innerHTML = `${cashout ? 'Забрали деньги!' : 'Вы выиграли!'}<br>🏆 +${winAmount} звёзд (x${multiplier})`;
+            showMessage(cashout ? `💰 +${winAmount} звёзд` : `🎉 Победа! +${winAmount} звёзд`, 'win');
+        } else {
+            resultDiv.innerHTML = 'МИНА!<br>💸 Проигрыш';
+            showMessage(`💥 Мина! -${minesBet} звёзд`, 'lose');
+        }
+        
+        player.gamesPlayed++;
+        updateUI();
+        
+        document.getElementById('minesBtn').innerHTML = '<i class="fas fa-play"></i> Начать игру';
+        document.getElementById('minesBtn').onclick = startMines;
+    }, 1000);
 }
 
-// DICE (упрощенная версия)
+// DICE
 function openDice() {
-    showSection('games');
-    const gamesSection = document.getElementById('gamesSection');
-    
-    gamesSection.innerHTML = `
-        <button class="game-back-btn" onclick="showSection('games')">
-            <i class="fas fa-arrow-left"></i> Назад к играм
+    const main = document.querySelector('main');
+    main.innerHTML = `
+        <button class="back-btn" onclick="showMainGames()">
+            <i class="fas fa-arrow-left"></i> Назад
         </button>
         
-        <div style="text-align:center;padding:30px;">
+        <div class="game-screen">
             <h2><i class="fas fa-dice"></i> DICE</h2>
-            <p>Скоро здесь появится игра Dice!</p>
-            <p style="color:#aaa;">Угадай число и выиграй до x99</p>
+            
+            <div class="bet-controls">
+                <div class="bet-amount">
+                    <span>Ставка:</span>
+                    <input type="number" id="diceBet" value="100" min="10" max="${player.balance}"> звёзд
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p>Угадайте число от 1 до 100:</p>
+                    <input type="number" id="diceGuess" value="50" min="1" max="100" style="
+                        width: 100px;
+                        padding: 10px;
+                        background: rgba(255,255,255,0.1);
+                        border: 2px solid #ffd700;
+                        border-radius: 10px;
+                        color: white;
+                        text-align: center;
+                        font-size: 1.2rem;
+                        margin-top: 10px;
+                    ">
+                </div>
+            </div>
+            
+            <div style="text-align:center; margin: 30px 0;">
+                <div id="diceResult" class="result-display">─</div>
+            </div>
+            
+            <button class="game-btn" onclick="rollDice()">
+                <i class="fas fa-dice"></i> Бросить кости
+            </button>
         </div>
     `;
 }
 
-// CRASH (упрощенная версия)
-function openCrash() {
-    showSection('games');
-    const gamesSection = document.getElementById('gamesSection');
+function rollDice() {
+    const bet = parseInt(document.getElementById('diceBet').value);
+    const guess = parseInt(document.getElementById('diceGuess').value);
     
-    gamesSection.innerHTML = `
-        <button class="game-back-btn" onclick="showSection('games')">
-            <i class="fas fa-arrow-left"></i> Назад к играм
+    if (bet > player.balance) {
+        showMessage('Недостаточно звёзд!', 'error');
+        return;
+    }
+    
+    if (guess < 1 || guess > 100) {
+        showMessage('Число должно быть от 1 до 100!', 'error');
+        return;
+    }
+    
+    const result = Math.floor(Math.random() * 100) + 1;
+    const difference = Math.abs(guess - result);
+    let multiplier = 0;
+    
+    if (guess === result) {
+        multiplier = 99;
+    } else if (difference <= 5) {
+        multiplier = 5;
+    } else if (difference <= 10) {
+        multiplier = 2;
+    }
+    
+    const win = bet * multiplier;
+    const resultDiv = document.getElementById('diceResult');
+    
+    resultDiv.className = multiplier > 0 ? 'result-display win' : 'result-display lose';
+    
+    setTimeout(() => {
+        resultDiv.innerHTML = `Выпало: <strong>${result}</strong>`;
+        
+        setTimeout(() => {
+            if (multiplier > 0) {
+                player.balance += win;
+                player.totalWins += win;
+                player.bestWin = Math.max(player.bestWin, win);
+                
+                resultDiv.innerHTML += `<div style="margin-top:10px;font-size:1.5rem;">🏆 +${win} звёзд (x${multiplier})</div>`;
+                showMessage(`🎉 Угадал! +${win} звёзд`, 'win');
+            } else {
+                player.balance -= bet;
+                resultDiv.innerHTML += `<div style="margin-top:10px;font-size:1.5rem;">💸 -${bet} звёзд</div>`;
+                showMessage(`😢 Не угадал! -${bet} звёзд`, 'lose');
+            }
+            
+            player.gamesPlayed++;
+            updateUI();
+        }, 1000);
+    }, 500);
+}
+
+// CRASH
+function openCrash() {
+    const main = document.querySelector('main');
+    main.innerHTML = `
+        <button class="back-btn" onclick="showMainGames()">
+            <i class="fas fa-arrow-left"></i> Назад
         </button>
         
-        <div style="text-align:center;padding:30px;">
+        <div class="game-screen">
             <h2><i class="fas fa-chart-line"></i> CRASH</h2>
-            <p>Скоро здесь появится игра Crash!</p>
-            <p style="color:#aaa;">Успей забрать деньги до краша</p>
+            
+            <div class="bet-controls">
+                <div class="bet-amount">
+                    <span>Ставка:</span>
+                    <input type="number" id="crashBet" value="100" min="10" max="${player.balance}"> звёзд
+                </div>
+            </div>
+            
+            <div style="text-align:center; margin: 30px 0;">
+                <div id="crashMultiplier" style="font-size:4rem;font-weight:bold;color:#ffd700;">1.00x</div>
+                <div id="crashResult" class="result-display" style="margin-top:20px;">─</div>
+            </div>
+            
+            <div style="display:flex; gap:20px;">
+                <button class="game-btn" onclick="startCrash()" id="crashStartBtn" style="flex:1;">
+                    <i class="fas fa-play"></i> Старт
+                </button>
+                <button class="game-btn" onclick="cashoutCrash()" id="crashCashoutBtn" disabled style="flex:1;background:linear-gradient(45deg,#28a745,#20c997);">
+                    <i class="fas fa-money-bill-wave"></i> Забрать
+                </button>
+            </div>
         </div>
     `;
 }
 
-// ПОПОЛНЕНИЕ И ВЫВОД
+let crashActive = false;
+let crashMultiplier = 1.0;
+let crashInterval = null;
+let crashBet = 0;
 
-function copyWallet() {
-    navigator.clipboard.writeText(TON_WALLET);
-    showResultMessage('Кошелёк скопирован!', 'info');
-}
-
-function selectPackage(stars) {
-    document.getElementById('depositStars').value = stars;
-    showResultMessage(`Выбрано ${stars} звёзд (~${(stars * 0.015).toFixed(2)} TON)`, 'info');
-}
-
-function submitDeposit() {
-    const stars = parseInt(document.getElementById('depositStars').value);
-    const txHash = document.getElementById('txHash').value.trim();
+function startCrash() {
+    if (crashActive) return;
     
-    if (!stars || stars < 10) {
-        showResultMessage('Минимум 10 звёзд!', 'error');
+    const bet = parseInt(document.getElementById('crashBet').value);
+    
+    if (bet > player.balance) {
+        showMessage('Недостаточно звёзд!', 'error');
         return;
     }
     
-    if (!txHash) {
-        showResultMessage('Введите хэш транзакции!', 'error');
-        return;
-    }
-    
-    // Добавляем в историю
-    depositHistory.unshift({
-        id: Date.now(),
-        stars: stars,
-        tonAmount: stars * 0.015,
-        txHash: txHash,
-        status: 'pending',
-        date: new Date().toLocaleString()
-    });
-    
-    saveHistory();
-    showResultMessage('✅ Запрос отправлен админу! Ожидайте подтверждения.', 'info');
-    
-    // Очищаем поле хэша
-    document.getElementById('txHash').value = '';
-}
-
-function setMaxWithdraw() {
-    document.getElementById('withdrawStars').value = userData.balance;
-    updateWithdrawSummary();
-}
-
-function updateWithdrawSummary() {
-    const stars = parseInt(document.getElementById('withdrawStars').value) || 0;
-    const tonAmount = (stars * 0.015).toFixed(2);
-    
-    document.getElementById('withdrawTonAmount').textContent = tonAmount;
-    document.getElementById('totalWithdraw').textContent = tonAmount;
-}
-
-// Обновляем сумму при изменении
-document.addEventListener('input', function(e) {
-    if (e.target.id === 'withdrawStars') {
-        updateWithdrawSummary();
-    }
-});
-
-function submitWithdraw() {
-    const stars = parseInt(document.getElementById('withdrawStars').value);
-    const tgUsername = document.getElementById('tgUsername').value.trim();
-    
-    if (!stars || stars < 50 || stars > userData.balance) {
-        showResultMessage('Минимум 50 звёзд, максимум - ваш баланс!', 'error');
-        return;
-    }
-    
-    if (!tgUsername) {
-        showResultMessage('Введите ваш Telegram @username!', 'error');
-        return;
-    }
-    
-    // Проверяем формат username
-    const usernamePattern = /^[a-zA-Z0-9_]{5,32}$/;
-    if (!usernamePattern.test(tgUsername)) {
-        showResultMessage('Введите корректный Telegram username (только буквы, цифры и _)', 'error');
-        return;
-    }
-    
-    // Списываем со счета
-    userData.balance -= stars;
+    crashBet = bet;
+    crashActive = true;
+    crashMultiplier = 1.0;
+    player.balance -= bet;
     updateUI();
     
-    // Добавляем в историю
-    withdrawHistory.unshift({
-        id: Date.now(),
-        stars: stars,
-        tonAmount: stars * 0.015,
-        tgUsername: tgUsername,
-        status: 'pending',
-        date: new Date().toLocaleString()
-    });
+    document.getElementById('crashStartBtn').disabled = true;
+    document.getElementById('crashCashoutBtn').disabled = false;
+    document.getElementById('crashMultiplier').textContent = '1.00x';
+    document.getElementById('crashResult').textContent = 'Множитель растёт...';
     
-    saveHistory();
-    showResultMessage(`✅ Запрос на вывод отправлен! Мы напишем вам в Telegram @${tgUsername}`, 'info');
-    
-    // Очищаем форму
-    document.getElementById('withdrawStars').value = '';
-    document.getElementById('tgUsername').value = '';
-    updateWithdrawSummary();
+    // Запускаем рост
+    crashInterval = setInterval(() => {
+        crashMultiplier += 0.01 + (Math.random() * 0.05);
+        document.getElementById('crashMultiplier').textContent = crashMultiplier.toFixed(2) + 'x';
+        
+        // Шанс краша (2% каждый шаг)
+        if (Math.random() < 0.02) {
+            endCrash(false);
+        }
+    }, 100);
 }
 
-// ИСТОРИЯ
-function loadHistoryData() {
-    // История игр
-    const gamesHistoryDiv = document.getElementById('gamesHistory');
-    gamesHistoryDiv.innerHTML = '';
-    
-    if (gameHistory.length === 0) {
-        gamesHistoryDiv.innerHTML = '<p style="color:#aaa;text-align:center;padding:50px;">История игр пуста</p>';
-    } else {
-        gameHistory.slice(0, 10).forEach(record => {
-            const item = document.createElement('div');
-            item.className = `history-item history-${record.result}`;
-            item.innerHTML = `
-                <div style="display:flex;justify-content:space-between;">
-                    <strong>${record.game}</strong>
-                    <span style="color:${record.result === 'win' ? '#28a745' : '#dc3545'}">
-                        ${record.result === 'win' ? '+' : ''}${record.amount} звёзд
-                    </span>
-                </div>
-                <div style="color:#aaa;font-size:0.9rem;margin-top:5px;">
-                    ${record.details} | ${record.date}
-                </div>
-            `;
-            gamesHistoryDiv.appendChild(item);
-        });
-    }
-    
-    // История пополнений
-    const depositsHistoryDiv = document.getElementById('depositsHistory');
-    depositsHistoryDiv.innerHTML = '';
-    
-    if (depositHistory.length === 0) {
-        depositsHistoryDiv.innerHTML = '<p style="color:#aaa;text-align:center;padding:50px;">История пополнений пуста</p>';
-    } else {
-        depositHistory.slice(0, 10).forEach(record => {
-            const item = document.createElement('div');
-            item.className = `history-item history-${record.status}`;
-            item.innerHTML = `
-                <div style="display:flex;justify-content:space-between;">
-                    <strong>Пополнение</strong>
-                    <span style="color:#ffd700;">${record.stars} звёзд</span>
-                </div>
-                <div style="color:#aaa;font-size:0.9rem;margin-top:5px;">
-                    ${record.tonAmount} TON | ${record.date}
-                </div>
-                <div style="color:#aaa;font-size:0.8rem;margin-top:5px;">
-                    Статус: ${record.status === 'pending' ? '⏳ Ожидание' : 
-                              record.status === 'approved' ? '✅ Подтверждено' : '❌ Отклонено'}
-                </div>
-            `;
-            depositsHistoryDiv.appendChild(item);
-        });
-    }
-    
-    // История выводов
-    const withdrawalsHistoryDiv = document.getElementById('withdrawalsHistory');
-    withdrawalsHistoryDiv.innerHTML = '';
-    
-    if (withdrawHistory.length === 0) {
-        withdrawalsHistoryDiv.innerHTML = '<p style="color:#aaa;text-align:center;padding:50px;">История выводов пуста</p>';
-    } else {
-        withdrawHistory.slice(0, 10).forEach(record => {
-            const item = document.createElement('div');
-            item.className = `history-item history-${record.status}`;
-            item.innerHTML = `
-                <div style="display:flex;justify-content:space-between;">
-                    <strong>Вывод</strong>
-                    <span style="color:#ffd700;">${record.stars} звёзд</span>
-                </div>
-                <div style="color:#aaa;font-size:0.9rem;margin-top:5px;">
-                    ${record.tonAmount} TON → @${record.tgUsername}
-                </div>
-                <div style="color:#aaa;font-size:0.8rem;margin-top:5px;">
-                    ${record.date} | Статус: ${record.status === 'pending' ? '⏳ Ожидание' : 
-                                              record.status === 'approved' ? '✅ Выплачено' : '❌ Отклонено'}
-                </div>
-            `;
-            withdrawalsHistoryDiv.appendChild(item);
-        });
-    }
+function cashoutCrash() {
+    if (!crashActive) return;
+    endCrash(true);
 }
 
-function showHistoryTab(tabName) {
-    // Скрыть все табы
-    document.querySelectorAll('.history-content').forEach(tab => {
-        tab.style.display = 'none';
-    });
+function endCrash(cashedOut) {
+    clearInterval(crashInterval);
+    crashActive = false;
     
-    // Убрать активный класс
-    document.querySelectorAll('.history-tab').forEach(btn => {
-        btn.classList.remove('active');
-    });
+    document.getElementById('crashStartBtn').disabled = false;
+    document.getElementById('crashCashoutBtn').disabled = true;
     
-    // Показать выбранный таб
-    document.getElementById(tabName + 'History').style.display = 'block';
+    const winAmount = Math.floor(crashBet * crashMultiplier);
+    const resultDiv = document.getElementById('crashResult');
     
-    // Активный класс кнопке
-    event.target.classList.add('active');
+    resultDiv.className = cashedOut ? 'result-display win' : 'result-display lose';
+    
+    setTimeout(() => {
+        if (cashedOut) {
+            player.balance += winAmount;
+            player.totalWins += winAmount;
+            player.bestWin = Math.max(player.bestWin, winAmount);
+            
+            resultDiv.innerHTML = `Забрали на ${crashMultiplier.toFixed(2)}x<br>🏆 +${winAmount} звёзд`;
+            showMessage(`💰 Успешно! +${winAmount} звёзд`, 'win');
+        } else {
+            resultDiv.innerHTML = `КРАШ! ${crashMultiplier.toFixed(2)}x<br>💸 Проигрыш`;
+            showMessage(`💥 Краш! -${crashBet} звёзд`, 'lose');
+        }
+        
+        player.gamesPlayed++;
+        updateUI();
+    }, 500);
 }
 
-// ПРОФИЛЬ
-function openProfile() {
-    document.getElementById('profileModal').style.display = 'block';
-}
-
-function closeProfileModal() {
-    document.getElementById('profileModal').style.display = 'none';
-}
-
-// РЕЗУЛЬТАТЫ ИГР
-function showResultMessage(message, type) {
+// Вспомогательные функции
+function showMessage(text, type) {
     const modal = document.getElementById('resultModal');
     const content = document.getElementById('resultContent');
     
+    let color = '#28a745';
     let icon = '🎉';
-    let title = 'Успех!';
     
-    switch(type) {
-        case 'win':
-            icon = '🏆';
-            title = 'ПОБЕДА!';
-            break;
-        case 'lose':
-            icon = '😢';
-            title = 'ПРОИГРЫШ';
-            break;
-        case 'error':
-            icon = '⚠️';
-            title = 'Ошибка';
-            break;
-        case 'info':
-            icon = 'ℹ️';
-            title = 'Информация';
-            break;
+    if (type === 'error') {
+        color = '#dc3545';
+        icon = '⚠️';
+    } else if (type === 'lose') {
+        color = '#dc3545';
+        icon = '😢';
     }
     
     content.innerHTML = `
-        <div style="font-size:4rem;margin-bottom:20px;">${icon}</div>
-        <h2>${title}</h2>
-        <p style="font-size:1.2rem;margin:20px 0;">${message}</p>
+        <div style="font-size:3rem;margin-bottom:10px;">${icon}</div>
+        <div style="font-size:1.2rem;color:${color};font-weight:bold;">${text}</div>
     `;
     
     modal.style.display = 'block';
-    
-    // Автоматически закрыть через 3 секунды для побед/проигрышей
-    if (type === 'win' || type === 'lose') {
-        setTimeout(() => {
-            modal.style.display = 'none';
-        }, 3000);
-    }
 }
 
-function closeResultModal() {
+function closeModal() {
     document.getElementById('resultModal').style.display = 'none';
 }
 
-// АДМИН ПАНЕЛЬ (остается без изменений из предыдущей версии)
-function openAdminPanel() {
-    document.getElementById('adminModal').style.display = 'block';
-    document.getElementById('adminContent').style.display = 'none';
-    document.getElementById('adminPassword').value = '';
-}
-
-function closeAdminPanel() {
-    document.getElementById('adminModal').style.display = 'none';
-}
-
-function loginAdmin() {
-    const password = document.getElementById('adminPassword').value;
-    
-    if (password === ADMIN_PASSWORD) {
-        document.getElementById('adminContent').style.display = 'block';
-        loadAdminData();
-    } else {
-        showResultMessage('❌ Неверный пароль!', 'error');
-    }
-}
-
-function switchTab(tabName) {
-    // Скрыть все табы
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.style.display = 'none';
-    });
-    
-    // Убрать активный класс со всех кнопок
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Показать выбранный таб
-    document.getElementById(tabName + 'Tab').style.display = 'block';
-    
-    // Активный класс кнопке
-    event.target.classList.add('active');
-}
-
-function loadAdminData() {
-    // Пополнения
-    const depositsDiv = document.getElementById('pendingDeposits');
-    depositsDiv.innerHTML = '';
-    
-    const pendingDeposits = depositHistory.filter(d => d.status === 'pending');
-    
-    if (pendingDeposits.length === 0) {
-        depositsDiv.innerHTML = '<p style="color:#aaa;text-align:center;padding:20px;">Нет ожидающих пополнений</p>';
-    } else {
-        pendingDeposits.forEach(deposit => {
-            depositsDiv.innerHTML += `
-                <div class="transaction-item">
-                    <p><strong>Хэш:</strong> ${deposit.txHash}</p>
-                    <p><strong>Звёзд:</strong> ${deposit.stars}</p>
-                    <p><strong>TON:</strong> ${deposit.tonAmount}</p>
-                    <p><strong>Дата:</strong> ${deposit.date}</p>
-                    <div class="transaction-actions">
-                        <button class="approve-btn" onclick="approveDeposit(${deposit.id})">
-                            <i class="fas fa-check"></i> Одобрить
-                        </button>
-                        <button class="reject-btn" onclick="rejectDeposit(${deposit.id})">
-                            <i class="fas fa-times"></i> Отклонить
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-    }
-    
-    // Выводы
-    const withdrawalsDiv = document.getElementById('pendingWithdrawals');
-    withdrawalsDiv.innerHTML = '';
-    
-    const pendingWithdrawals = withdrawHistory.filter(w => w.status === 'pending');
-    
-    if (pendingWithdrawals.length === 0) {
-        withdrawalsDiv.innerHTML = '<p style="color:#aaa;text-align:center;padding:20px;">Нет ожидающих выводов</p>';
-    } else {
-        pendingWithdrawals.forEach(withdrawal => {
-            withdrawalsDiv.innerHTML += `
-                <div class="transaction-item">
-                    <p><strong>Username:</strong> @${withdrawal.tgUsername}</p>
-                    <p><strong>Звёзд:</strong> ${withdrawal.stars}</p>
-                    <p><strong>TON:</strong> ${withdrawal.tonAmount}</p>
-                    <p><strong>Дата:</strong> ${withdrawal.date}</p>
-                    <div class="transaction-actions">
-                        <button class="approve-btn" onclick="approveWithdrawal(${withdrawal.id})">
-                            <i class="fas fa-check"></i> Выплатить
-                        </button>
-                        <button class="reject-btn" onclick="rejectWithdrawal(${withdrawal.id})">
-                            <i class="fas fa-times"></i> Отклонить
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-    }
-}
-
-function approveDeposit(depositId) {
-    const deposit = depositHistory.find(d => d.id === depositId);
-    if (deposit) {
-        deposit.status = 'approved';
-        userData.balance += deposit.stars;
-        updateUI();
-        saveHistory();
-        loadAdminData();
-        showResultMessage(`✅ Пополнение одобрено!`, 'info');
-    }
-}
-
-function rejectDeposit(depositId) {
-    const deposit = depositHistory.find(d => d.id === depositId);
-    if (deposit) {
-        deposit.status = 'rejected';
-        saveHistory();
-        loadAdminData();
-        showResultMessage('❌ Пополнение отклонено.', 'info');
-    }
-}
-
-function approveWithdrawal(withdrawalId) {
-    const withdrawal = withdrawHistory.find(w => w.id === withdrawalId);
-    if (withdrawal) {
-        withdrawal.status = 'approved';
-        saveHistory();
-        loadAdminData();
-        showResultMessage(`✅ Вывод одобрен! Отправьте ${withdrawal.tonAmount} TON пользователю @${withdrawal.tgUsername}`, 'info');
-    }
-}
-
-function rejectWithdrawal(withdrawalId) {
-    const withdrawal = withdrawHistory.find(w => w.id === withdrawalId);
-    if (withdrawal) {
-        withdrawal.status = 'rejected';
-        userData.balance += withdrawal.stars;
-        updateUI();
-        saveHistory();
-        loadAdminData();
-        showResultMessage('❌ Вывод отклонен. Звёзды возвращены на баланс.', 'info');
-    }
-}
-
-// Закрытие модальных окон
+// Закрытие модального окна кликом вне
 window.onclick = function(event) {
-    const modals = document.getElementsByClassName('modal');
-    for (let modal of modals) {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
+    const modal = document.getElementById('resultModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
     }
 };
