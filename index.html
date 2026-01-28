@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Casino</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header id="header">
+            <div class="header-left">
+                <button id="back-btn" class="icon-btn hidden" aria-label="Назад">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <div class="logo" id="logo">
+                    <div class="logo-icon">
+                        <i data-lucide="diamond"></i>
+                    </div>
+                    <span id="page-title">CASINO</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="balance" id="balance-display">
+                    <i data-lucide="coins" class="balance-icon"></i>
+                    <span class="balance-amount" id="balance-amount">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Home Screen -->
+            <div id="screen-home" class="screen active">
+                <div class="hero-section">
+                    <div class="hero-glow"></div>
+                    <h1 class="hero-title">Добро пожаловать</h1>
+                    <p class="hero-subtitle">Испытай удачу в лучших играх</p>
+                </div>
+                
+                <div class="games-grid">
+                    <div class="game-card" data-game="dice">
+                        <div class="game-card-glow"></div>
+                        <div class="game-icon">
+                            <i data-lucide="dices"></i>
+                        </div>
+                        <div class="game-info">
+                            <div class="game-name">Dice</div>
+                            <div class="game-desc">Угадай число</div>
+                        </div>
+                        <div class="game-multiplier">до 99x</div>
+                    </div>
+                    
+                    <div class="game-card" data-game="roulette">
+                        <div class="game-card-glow"></div>
+                        <div class="game-icon">
+                            <i data-lucide="circle-dot"></i>
+                        </div>
+                        <div class="game-info">
+                            <div class="game-name">Рулетка</div>
+                            <div class="game-desc">Классика казино</div>
+                        </div>
+                        <div class="game-multiplier">до 36x</div>
+                    </div>
+                    
+                    <div class="game-card" data-game="mines">
+                        <div class="game-card-glow"></div>
+                        <div class="game-icon">
+                            <i data-lucide="bomb"></i>
+                        </div>
+                        <div class="game-info">
+                            <div class="game-name">Mines</div>
+                            <div class="game-desc">Найди алмазы</div>
+                        </div>
+                        <div class="game-multiplier">до 100x</div>
+                    </div>
+                    
+                    <div class="game-card" data-game="crash">
+                        <div class="game-card-glow"></div>
+                        <div class="game-icon">
+                            <i data-lucide="trending-up"></i>
+                        </div>
+                        <div class="game-info">
+                            <div class="game-name">Crash</div>
+                            <div class="game-desc">Успей забрать</div>
+                        </div>
+                        <div class="game-multiplier">до 1000x</div>
+                    </div>
+                    
+                    <div class="game-card game-card-wide" data-game="slots">
+                        <div class="game-card-glow"></div>
+                        <div class="game-icon">
+                            <i data-lucide="cherry"></i>
+                        </div>
+                        <div class="game-info">
+                            <div class="game-name">Slots</div>
+                            <div class="game-desc">Крути барабаны</div>
+                        </div>
+                        <div class="game-multiplier">до 100x</div>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <button class="nav-item" id="wallet-btn">
+                        <i data-lucide="wallet"></i>
+                        <span>Кошелёк</span>
+                    </button>
+                    <button class="nav-item" id="history-btn">
+                        <i data-lucide="history"></i>
+                        <span>История</span>
+                    </button>
+                    <button class="nav-item" id="stats-btn">
+                        <i data-lucide="bar-chart-3"></i>
+                        <span>Статистика</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dice Game Screen -->
+            <div id="screen-dice" class="screen">
+                <div class="game-container">
+                    <div class="dice-display">
+                        <div class="dice-result-container">
+                            <div class="dice-result" id="dice-result">
+                                <span class="dice-number">?</span>
+                            </div>
+                            <div class="dice-result-label" id="dice-result-label"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="dice-slider-container">
+                        <div class="slider-header">
+                            <span class="slider-label">Выбери порог</span>
+                            <span class="slider-value" id="dice-target">50</span>
+                        </div>
+                        <div class="slider-track-container">
+                            <div class="slider-track">
+                                <div class="slider-fill" id="dice-slider-fill"></div>
+                            </div>
+                            <input type="range" id="dice-slider" min="2" max="98" value="50" class="slider">
+                        </div>
+                        <div class="slider-range">
+                            <span>1</span>
+                            <span>100</span>
+                        </div>
+                    </div>
+
+                    <div class="game-stats-row">
+                        <div class="stat-card">
+                            <i data-lucide="percent"></i>
+                            <div class="stat-info">
+                                <span class="stat-label">Шанс</span>
+                                <span class="stat-value" id="dice-chance">49%</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i data-lucide="x"></i>
+                            <div class="stat-info">
+                                <span class="stat-label">Множитель</span>
+                                <span class="stat-value" id="dice-multiplier">2.00x</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bet-section">
+                        <div class="bet-input-container">
+                            <button class="bet-adjust" data-action="half">
+                                <i data-lucide="divide"></i>
+                            </button>
+                            <div class="bet-input-wrapper">
+                                <i data-lucide="coins"></i>
+                                <input type="number" id="dice-bet" class="bet-input" value="10" min="1">
+                            </div>
+                            <button class="bet-adjust" data-action="double">
+                                <span>2x</span>
+                            </button>
+                        </div>
+                        <div class="bet-presets">
+                            <button class="bet-preset" data-amount="10">10</button>
+                            <button class="bet-preset" data-amount="50">50</button>
+                            <button class="bet-preset" data-amount="100">100</button>
+                            <button class="bet-preset" data-amount="max">MAX</button>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-play" id="dice-roll-btn">
+                        <i data-lucide="dices"></i>
+                        <span>БРОСИТЬ</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Roulette Game Screen -->
+            <div id="screen-roulette" class="screen">
+                <div class="game-container">
+                    <div class="roulette-display">
+                        <div class="roulette-wheel" id="roulette-wheel">
+                            <div class="wheel-outer">
+                                <div class="wheel-numbers" id="wheel-numbers"></div>
+                                <div class="wheel-inner">
+                                    <div class="wheel-center">
+                                        <span id="roulette-result">?</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="wheel-pointer"></div>
+                        </div>
+                    </div>
+
+                    <div class="roulette-bets">
+                        <div class="bet-group">
+                            <span class="bet-group-label">Цвет</span>
+                            <div class="bet-row">
+                                <button class="roulette-bet red" data-bet="red">
+                                    <span class="color-dot red"></span>
+                                    <span>Красное</span>
+                                </button>
+                                <button class="roulette-bet black" data-bet="black">
+                                    <span class="color-dot black"></span>
+                                    <span>Чёрное</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bet-group">
+                            <span class="bet-group-label">Чёт / Нечёт</span>
+                            <div class="bet-row">
+                                <button class="roulette-bet" data-bet="even">Чётное</button>
+                                <button class="roulette-bet green" data-bet="green">
+                                    <span class="color-dot green"></span>
+                                    <span>Zero</span>
+                                </button>
+                                <button class="roulette-bet" data-bet="odd">Нечётное</button>
+                            </div>
+                        </div>
+                        
+                        <div class="bet-group">
+                            <span class="bet-group-label">Диапазон</span>
+                            <div class="bet-row">
+                                <button class="roulette-bet" data-bet="low">1-18</button>
+                                <button class="roulette-bet" data-bet="high">19-36</button>
+                            </div>
+                        </div>
+                        
+                        <div class="bet-group">
+                            <span class="bet-group-label">Точное число (36x)</span>
+                            <div class="number-bet-row">
+                                <input type="number" id="roulette-number" min="0" max="36" placeholder="0-36">
+                                <button class="roulette-bet number-bet" data-bet="number">
+                                    <i data-lucide="target"></i>
+                                    <span>Поставить</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bet-section">
+                        <div class="bet-input-container">
+                            <button class="bet-adjust" data-action="half">
+                                <i data-lucide="divide"></i>
+                            </button>
+                            <div class="bet-input-wrapper">
+                                <i data-lucide="coins"></i>
+                                <input type="number" id="roulette-bet" class="bet-input" value="10" min="1">
+                            </div>
+                            <button class="bet-adjust" data-action="double">
+                                <span>2x</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mines Game Screen -->
+            <div id="screen-mines" class="screen">
+                <div class="game-container">
+                    <div class="mines-header">
+                        <div class="mines-stat">
+                            <i data-lucide="zap"></i>
+                            <div class="stat-content">
+                                <span class="stat-label">Множитель</span>
+                                <span class="stat-value" id="mines-multiplier">1.00x</span>
+                            </div>
+                        </div>
+                        <div class="mines-stat highlight">
+                            <i data-lucide="coins"></i>
+                            <div class="stat-content">
+                                <span class="stat-label">Выигрыш</span>
+                                <span class="stat-value" id="mines-potential">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mines-grid" id="mines-grid">
+                        <!-- 25 cells generated by JS -->
+                    </div>
+
+                    <div class="mines-setup" id="mines-setup">
+                        <div class="mines-count-section">
+                            <span class="section-label">Количество мин</span>
+                            <div class="mines-select">
+                                <button class="mines-count-btn" data-count="1">1</button>
+                                <button class="mines-count-btn" data-count="3">3</button>
+                                <button class="mines-count-btn active" data-count="5">5</button>
+                                <button class="mines-count-btn" data-count="10">10</button>
+                                <button class="mines-count-btn" data-count="20">20</button>
+                            </div>
+                        </div>
+                        
+                        <div class="bet-section">
+                            <div class="bet-input-container">
+                                <button class="bet-adjust" data-action="half">
+                                    <i data-lucide="divide"></i>
+                                </button>
+                                <div class="bet-input-wrapper">
+                                    <i data-lucide="coins"></i>
+                                    <input type="number" id="mines-bet" class="bet-input" value="10" min="1">
+                                </div>
+                                <button class="bet-adjust" data-action="double">
+                                    <span>2x</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-play" id="mines-start-btn">
+                            <i data-lucide="play"></i>
+                            <span>НАЧАТЬ ИГРУ</span>
+                        </button>
+                    </div>
+
+                    <div class="mines-actions hidden" id="mines-actions">
+                        <button class="btn btn-cashout" id="mines-cashout-btn">
+                            <i data-lucide="banknote"></i>
+                            <span>ЗАБРАТЬ</span>
+                            <span class="cashout-amount" id="mines-cashout-amount">0</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Crash Game Screen -->
+            <div id="screen-crash" class="screen">
+                <div class="game-container">
+                    <div class="crash-display">
+                        <canvas id="crash-canvas"></canvas>
+                        <div class="crash-multiplier-overlay">
+                            <span class="crash-multiplier" id="crash-multiplier">1.00x</span>
+                            <span class="crash-status" id="crash-status"></span>
+                        </div>
+                    </div>
+
+                    <div class="crash-controls" id="crash-controls">
+                        <div class="bet-section">
+                            <div class="bet-input-container">
+                                <button class="bet-adjust" data-action="half">
+                                    <i data-lucide="divide"></i>
+                                </button>
+                                <div class="bet-input-wrapper">
+                                    <i data-lucide="coins"></i>
+                                    <input type="number" id="crash-bet" class="bet-input" value="10" min="1">
+                                </div>
+                                <button class="bet-adjust" data-action="double">
+                                    <span>2x</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-play" id="crash-start-btn">
+                            <i data-lucide="rocket"></i>
+                            <span>СТАРТ</span>
+                        </button>
+                    </div>
+
+                    <div class="crash-playing hidden" id="crash-playing">
+                        <button class="btn btn-cashout" id="crash-cashout-btn">
+                            <i data-lucide="banknote"></i>
+                            <span>ЗАБРАТЬ</span>
+                            <span class="cashout-amount" id="crash-cashout-amount">0</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slots Game Screen -->
+            <div id="screen-slots" class="screen">
+                <div class="game-container">
+                    <div class="slots-machine">
+                        <div class="slots-frame">
+                            <div class="slots-window">
+                                <div class="slots-reels" id="slots-reels">
+                                    <div class="reel" id="reel-0">
+                                        <div class="reel-inner">
+                                            <div class="slot-symbol"><i data-lucide="cherry"></i></div>
+                                            <div class="slot-symbol"><i data-lucide="citrus"></i></div>
+                                            <div class="slot-symbol"><i data-lucide="grape"></i></div>
+                                        </div>
+                                    </div>
+                                    <div class="reel" id="reel-1">
+                                        <div class="reel-inner">
+                                            <div class="slot-symbol"><i data-lucide="star"></i></div>
+                                            <div class="slot-symbol"><i data-lucide="gem"></i></div>
+                                            <div class="slot-symbol"><i data-lucide="crown"></i></div>
+                                        </div>
+                                    </div>
+                                    <div class="reel" id="reel-2">
+                                        <div class="reel-inner">
+                                            <div class="slot-symbol"><i data-lucide="diamond"></i></div>
+                                            <div class="slot-symbol"><i data-lucide="cherry"></i></div>
+                                            <div class="slot-symbol"><i data-lucide="star"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="slots-payline"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="slots-win-display" id="slots-win-display">
+                        <div class="win-label">Выигрыш</div>
+                        <div class="win-amount" id="slots-win-amount">0</div>
+                    </div>
+
+                    <div class="bet-section">
+                        <div class="bet-input-container">
+                            <button class="bet-adjust" data-action="half">
+                                <i data-lucide="divide"></i>
+                            </button>
+                            <div class="bet-input-wrapper">
+                                <i data-lucide="coins"></i>
+                                <input type="number" id="slots-bet" class="bet-input" value="10" min="1">
+                            </div>
+                            <button class="bet-adjust" data-action="double">
+                                <span>2x</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-play" id="slots-spin-btn">
+                        <i data-lucide="rotate-cw"></i>
+                        <span>КРУТИТЬ</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Wallet Screen -->
+            <div id="screen-wallet" class="screen">
+                <div class="wallet-container">
+                    <div class="wallet-card">
+                        <div class="wallet-card-bg"></div>
+                        <div class="wallet-balance-section">
+                            <span class="wallet-label">Ваш баланс</span>
+                            <div class="wallet-amount">
+                                <i data-lucide="coins"></i>
+                                <span id="wallet-balance">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="wallet-section">
+                        <div class="section-header">
+                            <i data-lucide="star"></i>
+                            <h3>Пополнить Stars</h3>
+                        </div>
+                        <div class="deposit-grid">
+                            <button class="deposit-btn" data-stars="50">
+                                <span class="deposit-amount">50</span>
+                                <i data-lucide="star"></i>
+                            </button>
+                            <button class="deposit-btn" data-stars="100">
+                                <span class="deposit-amount">100</span>
+                                <i data-lucide="star"></i>
+                            </button>
+                            <button class="deposit-btn" data-stars="250">
+                                <span class="deposit-amount">250</span>
+                                <i data-lucide="star"></i>
+                            </button>
+                            <button class="deposit-btn" data-stars="500">
+                                <span class="deposit-amount">500</span>
+                                <i data-lucide="star"></i>
+                            </button>
+                            <button class="deposit-btn featured" data-stars="1000">
+                                <span class="deposit-amount">1000</span>
+                                <i data-lucide="star"></i>
+                                <span class="deposit-badge">Популярно</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="wallet-section">
+                        <div class="section-header">
+                            <i data-lucide="hexagon"></i>
+                            <h3>Пополнить TON</h3>
+                        </div>
+                        <button class="btn btn-ton" id="ton-connect-btn">
+                            <i data-lucide="link"></i>
+                            <span>Подключить кошелёк</span>
+                        </button>
+                    </div>
+
+                    <div class="wallet-section">
+                        <div class="section-header">
+                            <i data-lucide="send"></i>
+                            <h3>Вывод средств</h3>
+                        </div>
+                        <p class="section-hint">Минимальный вывод: 100 Stars</p>
+                        <div class="withdraw-form">
+                            <div class="withdraw-input-wrapper">
+                                <i data-lucide="coins"></i>
+                                <input type="number" id="withdraw-amount" placeholder="Сумма" min="100">
+                            </div>
+                            <button class="btn btn-withdraw" id="withdraw-btn">
+                                <i data-lucide="arrow-up-right"></i>
+                                <span>Вывести</span>
+                            </button>
+                        </div>
+                        <p class="section-note">
+                            <i data-lucide="info"></i>
+                            Вывод осуществляется через Fragment.com
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Screen -->
+            <div id="screen-history" class="screen">
+                <div class="history-container">
+                    <div class="history-header">
+                        <h2>История игр</h2>
+                        <div class="history-filters">
+                            <button class="filter-btn active" data-filter="all">Все</button>
+                            <button class="filter-btn" data-filter="wins">Выигрыши</button>
+                            <button class="filter-btn" data-filter="losses">Проигрыши</button>
+                        </div>
+                    </div>
+                    <div class="history-list" id="history-list">
+                        <div class="history-empty">
+                            <i data-lucide="inbox"></i>
+                            <span>Нет игр</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Screen -->
+            <div id="screen-stats" class="screen">
+                <div class="stats-container">
+                    <h2>Статистика</h2>
+                    <div class="stats-grid">
+                        <div class="stats-card">
+                            <i data-lucide="gamepad-2"></i>
+                            <span class="stats-value" id="stats-total-games">0</span>
+                            <span class="stats-label">Всего игр</span>
+                        </div>
+                        <div class="stats-card">
+                            <i data-lucide="trophy"></i>
+                            <span class="stats-value" id="stats-wins">0</span>
+                            <span class="stats-label">Побед</span>
+                        </div>
+                        <div class="stats-card">
+                            <i data-lucide="trending-up"></i>
+                            <span class="stats-value" id="stats-profit">0</span>
+                            <span class="stats-label">Прибыль</span>
+                        </div>
+                        <div class="stats-card">
+                            <i data-lucide="flame"></i>
+                            <span class="stats-value" id="stats-best-win">0</span>
+                            <span class="stats-label">Лучший выигрыш</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div id="loading-overlay" class="loading-overlay hidden">
+                <div class="loader">
+                    <div class="loader-ring"></div>
+                    <i data-lucide="diamond"></i>
+                </div>
+            </div>
+
+            <!-- Toast Notifications -->
+            <div id="toast-container"></div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/games/dice.js"></script>
+    <script src="js/games/roulette.js"></script>
+    <script src="js/games/mines.js"></script>
+    <script src="js/games/crash.js"></script>
+    <script src="js/games/slots.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
