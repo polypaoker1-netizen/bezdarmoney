@@ -19,7 +19,7 @@
             <div class="user-info">
                 <div class="balance">
                     <i class="fas fa-star"></i>
-                    <span id="balance">0</span> звёзд
+                    <span id="balance">1000</span> звёзд
                 </div>
                 <button class="admin-btn" onclick="openAdminPanel()">
                     <i class="fas fa-user-shield"></i> Админ
@@ -27,94 +27,154 @@
             </div>
         </header>
 
-        <div class="main-layout">
-            <!-- Левая колонка: Игры -->
-            <div class="left-column">
-                <section class="games">
-                    <h2><i class="fas fa-gamepad"></i> Игры</h2>
-                    <div class="games-grid">
-                        <div class="game-card" onclick="startGame('dice')">
-                            <i class="fas fa-dice"></i>
-                            <h3>Dice</h3>
-                            <p>Угадай число до 99x</p>
-                        </div>
-                        <div class="game-card" onclick="startGame('roulette')">
-                            <i class="fas fa-roulette-wheel"></i>
-                            <h3>Рулетка</h3>
-                            <p>Классика казино до 36x</p>
-                        </div>
-                        <div class="game-card" onclick="startGame('mines')">
-                            <i class="fas fa-gem"></i>
-                            <h3>Mines</h3>
-                            <p>Найди алмазы до 100x</p>
-                        </div>
-                        <div class="game-card" onclick="startGame('crash')">
-                            <i class="fas fa-chart-line"></i>
-                            <h3>Crash</h3>
-                            <p>Успей забрать до 1000x</p>
-                        </div>
-                        <div class="game-card" onclick="startGame('slots')">
-                            <i class="fas fa-sliders-h"></i>
-                            <h3>Slots</h3>
-                            <p>Круги барабаны до 100x</p>
-                        </div>
-                    </div>
-                </section>
+        <!-- Навигация -->
+        <nav class="main-nav">
+            <button class="nav-btn active" onclick="showSection('games')">
+                <i class="fas fa-gamepad"></i> Игры
+            </button>
+            <button class="nav-btn" onclick="showSection('deposit')">
+                <i class="fas fa-wallet"></i> Пополнение
+            </button>
+            <button class="nav-btn" onclick="showSection('withdraw')">
+                <i class="fas fa-money-bill-wave"></i> Вывод
+            </button>
+            <button class="nav-btn" onclick="showSection('history')">
+                <i class="fas fa-history"></i> История
+            </button>
+        </nav>
 
-                <section class="stats">
-                    <h2><i class="fas fa-chart-bar"></i> Статистика</h2>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <div class="stat-label">Игр сыграно</div>
-                            <div class="stat-value" id="games-played">0</div>
+        <!-- Основной контент -->
+        <main>
+            <!-- Секция Игры (активная по умолчанию) -->
+            <div id="gamesSection" class="section active">
+                <div class="games-header">
+                    <h2><i class="fas fa-gamepad"></i> Выберите игру</h2>
+                    <div class="stats-bar">
+                        <div class="stat">
+                            <span class="stat-label">Игр:</span>
+                            <span id="games-played" class="stat-value">0</span>
                         </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Победа</div>
-                            <div class="stat-value" id="total-wins">0</div>
+                        <div class="stat">
+                            <span class="stat-label">Победы:</span>
+                            <span id="total-wins" class="stat-value">0</span>
                         </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Лучший выигрыш</div>
-                            <div class="stat-value" id="best-win">0</div>
+                        <div class="stat">
+                            <span class="stat-label">Рекорд:</span>
+                            <span id="best-win" class="stat-value">0</span>
                         </div>
                     </div>
-                </section>
+                </div>
+
+                <div class="games-grid">
+                    <!-- Рулетка -->
+                    <div class="game-card" onclick="openRoulette()">
+                        <div class="game-icon roulette-icon">
+                            <i class="fas fa-roulette-wheel"></i>
+                        </div>
+                        <h3>РУЛЕТКА</h3>
+                        <p>Красное / Чёрное / Зелёное</p>
+                        <div class="game-multiplier">до x36</div>
+                    </div>
+
+                    <!-- Слоты -->
+                    <div class="game-card" onclick="openSlots()">
+                        <div class="game-icon slots-icon">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <h3>СЛОТЫ</h3>
+                        <p>777 Джекпот</p>
+                        <div class="game-multiplier">до x100</div>
+                    </div>
+
+                    <!-- Mines -->
+                    <div class="game-card" onclick="openMines()">
+                        <div class="game-icon mines-icon">
+                            <i class="fas fa-gem"></i>
+                        </div>
+                        <h3>MINES</h3>
+                        <p>Найди алмазы</p>
+                        <div class="game-multiplier">до x100</div>
+                    </div>
+
+                    <!-- Dice -->
+                    <div class="game-card" onclick="openDice()">
+                        <div class="game-icon dice-icon">
+                            <i class="fas fa-dice"></i>
+                        </div>
+                        <h3>DICE</h3>
+                        <p>Угадай число</p>
+                        <div class="game-multiplier">до x99</div>
+                    </div>
+
+                    <!-- Crash -->
+                    <div class="game-card" onclick="openCrash()">
+                        <div class="game-icon crash-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3>CRASH</h3>
+                        <p>Успей забрать</p>
+                        <div class="game-multiplier">до x1000</div>
+                    </div>
+                </div>
+
+                <!-- Игровые окна (скрыты по умолчанию) -->
+                <div id="rouletteGame" class="game-window" style="display:none;">
+                    <!-- Контент рулетки -->
+                </div>
+
+                <div id="slotsGame" class="game-window" style="display:none;">
+                    <!-- Контент слотов -->
+                </div>
+
+                <div id="minesGame" class="game-window" style="display:none;">
+                    <!-- Контент mines -->
+                </div>
             </div>
 
-            <!-- Правая колонка: Пополнение -->
-            <div class="right-column">
-                <section class="deposit-section">
+            <!-- Секция Пополнения -->
+            <div id="depositSection" class="section">
+                <div class="deposit-container">
                     <h2><i class="fas fa-wallet"></i> Пополнение</h2>
                     
-                    <div class="wallet-info">
-                        <p><strong>Кошелёк для отправки TON:</strong></p>
-                        <div class="wallet-box">
-                            <code id="wallet-address">UQB_SEDoL3M_1ZdIZ7NU6cj0usA5hQQtwlzQGdCKacxsSmM</code>
+                    <div class="wallet-card">
+                        <div class="card-header">
+                            <i class="fas fa-qrcode"></i>
+                            <h3>Кошелёк для отправки TON</h3>
+                        </div>
+                        <div class="wallet-address">
+                            <code id="wallet-code">UQB_SEDoL3M_1ZdIZ7NU6cj0usA5hQQtwlzQGdCKacxsSmM</code>
                             <button class="copy-btn" onclick="copyWallet()">
-                                <i class="fas fa-copy"></i> Копировать
+                                <i class="fas fa-copy"></i>
                             </button>
                         </div>
-                        <p class="rate-info">Курс: 1 звезда = 0.015 TON (~$0.015)</p>
+                        <p class="wallet-note">После отправки TON, введите хэш транзакции ниже</p>
                     </div>
 
-                    <div class="packages-section">
-                        <h3>Пакеты звёзд:</h3>
-                        <div class="packages-grid">
-                            <div class="package-card" onclick="selectPackage(50)">
-                                <div class="package-header">50 звёзд</div>
-                                <div class="package-price">~0.75 TON</div>
-                            </div>
-                            <div class="package-card" onclick="selectPackage(100)">
-                                <div class="package-header">100 звёзд</div>
-                                <div class="package-price">~1.5 TON</div>
-                            </div>
-                            <div class="package-card" onclick="selectPackage(500)">
-                                <div class="package-header">500 звёзд</div>
-                                <div class="package-price">~7.5 TON</div>
-                            </div>
-                            <div class="package-card" onclick="selectPackage(1000)">
-                                <div class="package-header">1000 звёзд</div>
-                                <div class="package-price">~15 TON</div>
-                            </div>
+                    <div class="rate-info">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span>Курс: 1 звезда = 0.015 TON (~$0.015)</span>
+                    </div>
+
+                    <div class="packages-grid">
+                        <div class="package-card" onclick="selectPackage(50)">
+                            <div class="package-badge">🔥</div>
+                            <div class="package-stars">50 звёзд</div>
+                            <div class="package-price">~0.75 TON</div>
+                        </div>
+                        <div class="package-card" onclick="selectPackage(100)">
+                            <div class="package-badge">⚡</div>
+                            <div class="package-stars">100 звёзд</div>
+                            <div class="package-price">~1.5 TON</div>
+                        </div>
+                        <div class="package-card" onclick="selectPackage(500)">
+                            <div class="package-badge">💎</div>
+                            <div class="package-stars">500 звёзд</div>
+                            <div class="package-price">~7.5 TON</div>
+                        </div>
+                        <div class="package-card" onclick="selectPackage(1000)">
+                            <div class="package-badge">👑</div>
+                            <div class="package-stars">1000 звёзд</div>
+                            <div class="package-price">~15 TON</div>
                         </div>
                     </div>
 
@@ -122,43 +182,131 @@
                         <h3>Подтвердить пополнение</h3>
                         
                         <div class="form-group">
-                            <input type="number" id="deposit-stars" placeholder="100" value="100" min="10" max="100000">
-                            <span class="input-label">Количество звёзд</span>
+                            <label><i class="fas fa-star"></i> Количество звёзд</label>
+                            <input type="number" id="depositStars" value="100" min="10" max="100000">
                         </div>
                         
                         <div class="form-group">
-                            <input type="text" id="tx-hash" placeholder="Хэш транзакции TON">
-                            <span class="input-label">Хэш транзакции</span>
+                            <label><i class="fas fa-hashtag"></i> Хэш транзакции TON</label>
+                            <input type="text" id="txHash" placeholder="Введите хэш из TON Explorer">
                         </div>
                         
                         <button class="submit-btn" onclick="submitDeposit()">
                             <i class="fas fa-paper-plane"></i> Отправить на проверку
                         </button>
-                        
-                        <p class="hint">После отправки TON на кошелёк выше, введите хэш транзакции</p>
                     </div>
-                </section>
+                </div>
+            </div>
 
-                <section class="withdraw-section">
-                    <h2><i class="fas fa-money-bill-wave"></i> Вывод</h2>
+            <!-- Секция Вывода -->
+            <div id="withdrawSection" class="section">
+                <div class="withdraw-container">
+                    <h2><i class="fas fa-money-bill-wave"></i> Вывод средств</h2>
+                    
+                    <div class="withdraw-info">
+                        <div class="info-card">
+                            <i class="fab fa-telegram"></i>
+                            <div>
+                                <h4>Вывод через Telegram</h4>
+                                <p>Укажите ваш @username в Telegram</p>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card">
+                            <i class="fas fa-clock"></i>
+                            <div>
+                                <h4>Время обработки</h4>
+                                <p>Вывод происходит в течение 30 минут</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="withdraw-form">
-                        <input type="number" id="withdraw-stars" placeholder="Количество звёзд для вывода" min="10">
-                        <input type="text" id="withdraw-wallet" placeholder="Ваш TON кошелёк">
-                        <button onclick="submitWithdraw()">
+                        <div class="form-group">
+                            <label><i class="fas fa-star"></i> Количество звёзд для вывода</label>
+                            <div class="input-with-btn">
+                                <input type="number" id="withdrawStars" placeholder="Минимум 50 звёзд" min="50">
+                                <button class="max-btn" onclick="setMaxWithdraw()">МАКС</button>
+                            </div>
+                            <div class="balance-info">
+                                Доступно: <span id="availableBalance">1000</span> звёзд
+                                = ~<span id="availableTon">15</span> TON
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fab fa-telegram"></i> Ваш Telegram @username</label>
+                            <input type="text" id="tgUsername" placeholder="@username (без @)">
+                        </div>
+                        
+                        <div class="summary-card">
+                            <h4>Сводка вывода</h4>
+                            <div class="summary-row">
+                                <span>Вы получаете:</span>
+                                <span id="withdrawTonAmount">0</span> TON
+                            </div>
+                            <div class="summary-row">
+                                <span>Комиссия:</span>
+                                <span>0%</span>
+                            </div>
+                            <div class="summary-row total">
+                                <span>Итого к выплате:</span>
+                                <span id="totalWithdraw">0</span> TON
+                            </div>
+                        </div>
+                        
+                        <button class="withdraw-btn" onclick="submitWithdraw()">
                             <i class="fas fa-exchange-alt"></i> Запросить вывод
                         </button>
                     </div>
-                </section>
+                </div>
             </div>
-        </div>
 
-        <!-- Модальные окна -->
-        <div id="gameModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal()">&times;</span>
-                <div id="gameContent"></div>
+            <!-- Секция Истории -->
+            <div id="historySection" class="section">
+                <div class="history-container">
+                    <h2><i class="fas fa-history"></i> История операций</h2>
+                    
+                    <div class="history-tabs">
+                        <button class="history-tab active" onclick="showHistoryTab('games')">Игры</button>
+                        <button class="history-tab" onclick="showHistoryTab('deposits')">Пополнения</button>
+                        <button class="history-tab" onclick="showHistoryTab('withdrawals')">Выводы</button>
+                    </div>
+                    
+                    <div id="gamesHistory" class="history-content">
+                        <!-- История игр -->
+                    </div>
+                    
+                    <div id="depositsHistory" class="history-content" style="display:none;">
+                        <!-- История пополнений -->
+                    </div>
+                    
+                    <div id="withdrawalsHistory" class="history-content" style="display:none;">
+                        <!-- История выводов -->
+                    </div>
+                </div>
             </div>
-        </div>
+        </main>
+
+        <!-- Нижняя навигация -->
+        <footer class="bottom-nav">
+            <button class="bottom-nav-btn" onclick="showSection('games')">
+                <i class="fas fa-home"></i>
+                <span>Главная</span>
+            </button>
+            <button class="bottom-nav-btn" onclick="showSection('history')">
+                <i class="fas fa-history"></i>
+                <span>История</span>
+            </button>
+            <button class="bottom-nav-btn" onclick="window.open('https://t.me/bezdarlfkbf')">
+                <i class="fab fa-telegram"></i>
+                <span>Канал</span>
+            </button>
+            <button class="bottom-nav-btn" onclick="openProfile()">
+                <i class="fas fa-user"></i>
+                <span>Профиль</span>
+            </button>
+        </footer>
 
         <!-- Админ панель -->
         <div id="adminModal" class="modal">
@@ -196,10 +344,49 @@
             </div>
         </div>
 
-        <div id="messageModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeMessageModal()">&times;</span>
-                <p id="messageText"></p>
+        <!-- Модальное окно результата -->
+        <div id="resultModal" class="modal">
+            <div class="modal-content result-modal">
+                <div id="resultContent"></div>
+                <button class="continue-btn" onclick="closeResultModal()">Продолжить</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно профиля -->
+        <div id="profileModal" class="modal">
+            <div class="modal-content profile-modal">
+                <span class="close" onclick="closeProfileModal()">&times;</span>
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="profile-info">
+                        <h3>ID: <span id="profileId">12345</span></h3>
+                        <div class="profile-balance">
+                            <i class="fas fa-star"></i>
+                            <span id="profileBalance">1020</span> звёзд
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="deposit-profile-btn" onclick="showSection('deposit')">
+                    <i class="fas fa-plus"></i> Пополнить
+                </button>
+                
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <span>Игр сыграно</span>
+                        <strong id="profileGamesPlayed">0</strong>
+                    </div>
+                    <div class="profile-stat">
+                        <span>Общий выигрыш</span>
+                        <strong id="profileTotalWins">0</strong>
+                    </div>
+                    <div class="profile-stat">
+                        <span>Лучший выигрыш</span>
+                        <strong id="profileBestWin">0</strong>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
