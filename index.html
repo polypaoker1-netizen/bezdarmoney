@@ -6,7 +6,6 @@
     <title>BezdarMoney Casino</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="icon.png" type="image/png">
 </head>
 <body>
     <div class="container">
@@ -21,46 +20,26 @@
                     <i class="fas fa-star"></i>
                     <span id="balance">1000</span> звёзд
                 </div>
-                <button class="admin-btn" onclick="openAdminPanel()">
-                    <i class="fas fa-user-shield"></i> Админ
-                </button>
             </div>
         </header>
 
-        <!-- Навигация -->
-        <nav class="main-nav">
-            <button class="nav-btn active" onclick="showSection('games')">
-                <i class="fas fa-gamepad"></i> Игры
-            </button>
-            <button class="nav-btn" onclick="showSection('deposit')">
-                <i class="fas fa-wallet"></i> Пополнение
-            </button>
-            <button class="nav-btn" onclick="showSection('withdraw')">
-                <i class="fas fa-money-bill-wave"></i> Вывод
-            </button>
-            <button class="nav-btn" onclick="showSection('history')">
-                <i class="fas fa-history"></i> История
-            </button>
-        </nav>
-
         <!-- Основной контент -->
         <main>
-            <!-- Секция Игры (активная по умолчанию) -->
-            <div id="gamesSection" class="section active">
+            <div class="games-section">
                 <div class="games-header">
                     <h2><i class="fas fa-gamepad"></i> Выберите игру</h2>
                     <div class="stats-bar">
                         <div class="stat">
                             <span class="stat-label">Игр:</span>
-                            <span id="games-played" class="stat-value">0</span>
+                            <span id="games-played">0</span>
                         </div>
                         <div class="stat">
-                            <span class="stat-label">Победы:</span>
-                            <span id="total-wins" class="stat-value">0</span>
+                            <span class="stat-label">Выиграно:</span>
+                            <span id="total-wins">0</span>
                         </div>
                         <div class="stat">
                             <span class="stat-label">Рекорд:</span>
-                            <span id="best-win" class="stat-value">0</span>
+                            <span id="best-win">0</span>
                         </div>
                     </div>
                 </div>
@@ -116,278 +95,31 @@
                         <div class="game-multiplier">до x1000</div>
                     </div>
                 </div>
-
-                <!-- Игровые окна (скрыты по умолчанию) -->
-                <div id="rouletteGame" class="game-window" style="display:none;">
-                    <!-- Контент рулетки -->
-                </div>
-
-                <div id="slotsGame" class="game-window" style="display:none;">
-                    <!-- Контент слотов -->
-                </div>
-
-                <div id="minesGame" class="game-window" style="display:none;">
-                    <!-- Контент mines -->
-                </div>
-            </div>
-
-            <!-- Секция Пополнения -->
-            <div id="depositSection" class="section">
-                <div class="deposit-container">
-                    <h2><i class="fas fa-wallet"></i> Пополнение</h2>
-                    
-                    <div class="wallet-card">
-                        <div class="card-header">
-                            <i class="fas fa-qrcode"></i>
-                            <h3>Кошелёк для отправки TON</h3>
-                        </div>
-                        <div class="wallet-address">
-                            <code id="wallet-code">UQB_SEDoL3M_1ZdIZ7NU6cj0usA5hQQtwlzQGdCKacxsSmM</code>
-                            <button class="copy-btn" onclick="copyWallet()">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                        <p class="wallet-note">После отправки TON, введите хэш транзакции ниже</p>
-                    </div>
-
-                    <div class="rate-info">
-                        <i class="fas fa-exchange-alt"></i>
-                        <span>Курс: 1 звезда = 0.015 TON (~$0.015)</span>
-                    </div>
-
-                    <div class="packages-grid">
-                        <div class="package-card" onclick="selectPackage(50)">
-                            <div class="package-badge">🔥</div>
-                            <div class="package-stars">50 звёзд</div>
-                            <div class="package-price">~0.75 TON</div>
-                        </div>
-                        <div class="package-card" onclick="selectPackage(100)">
-                            <div class="package-badge">⚡</div>
-                            <div class="package-stars">100 звёзд</div>
-                            <div class="package-price">~1.5 TON</div>
-                        </div>
-                        <div class="package-card" onclick="selectPackage(500)">
-                            <div class="package-badge">💎</div>
-                            <div class="package-stars">500 звёзд</div>
-                            <div class="package-price">~7.5 TON</div>
-                        </div>
-                        <div class="package-card" onclick="selectPackage(1000)">
-                            <div class="package-badge">👑</div>
-                            <div class="package-stars">1000 звёзд</div>
-                            <div class="package-price">~15 TON</div>
-                        </div>
-                    </div>
-
-                    <div class="deposit-form">
-                        <h3>Подтвердить пополнение</h3>
-                        
-                        <div class="form-group">
-                            <label><i class="fas fa-star"></i> Количество звёзд</label>
-                            <input type="number" id="depositStars" value="100" min="10" max="100000">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label><i class="fas fa-hashtag"></i> Хэш транзакции TON</label>
-                            <input type="text" id="txHash" placeholder="Введите хэш из TON Explorer">
-                        </div>
-                        
-                        <button class="submit-btn" onclick="submitDeposit()">
-                            <i class="fas fa-paper-plane"></i> Отправить на проверку
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Секция Вывода -->
-            <div id="withdrawSection" class="section">
-                <div class="withdraw-container">
-                    <h2><i class="fas fa-money-bill-wave"></i> Вывод средств</h2>
-                    
-                    <div class="withdraw-info">
-                        <div class="info-card">
-                            <i class="fab fa-telegram"></i>
-                            <div>
-                                <h4>Вывод через Telegram</h4>
-                                <p>Укажите ваш @username в Telegram</p>
-                            </div>
-                        </div>
-                        
-                        <div class="info-card">
-                            <i class="fas fa-clock"></i>
-                            <div>
-                                <h4>Время обработки</h4>
-                                <p>Вывод происходит в течение 30 минут</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="withdraw-form">
-                        <div class="form-group">
-                            <label><i class="fas fa-star"></i> Количество звёзд для вывода</label>
-                            <div class="input-with-btn">
-                                <input type="number" id="withdrawStars" placeholder="Минимум 50 звёзд" min="50">
-                                <button class="max-btn" onclick="setMaxWithdraw()">МАКС</button>
-                            </div>
-                            <div class="balance-info">
-                                Доступно: <span id="availableBalance">1000</span> звёзд
-                                = ~<span id="availableTon">15</span> TON
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label><i class="fab fa-telegram"></i> Ваш Telegram @username</label>
-                            <input type="text" id="tgUsername" placeholder="@username (без @)">
-                        </div>
-                        
-                        <div class="summary-card">
-                            <h4>Сводка вывода</h4>
-                            <div class="summary-row">
-                                <span>Вы получаете:</span>
-                                <span id="withdrawTonAmount">0</span> TON
-                            </div>
-                            <div class="summary-row">
-                                <span>Комиссия:</span>
-                                <span>0%</span>
-                            </div>
-                            <div class="summary-row total">
-                                <span>Итого к выплате:</span>
-                                <span id="totalWithdraw">0</span> TON
-                            </div>
-                        </div>
-                        
-                        <button class="withdraw-btn" onclick="submitWithdraw()">
-                            <i class="fas fa-exchange-alt"></i> Запросить вывод
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Секция Истории -->
-            <div id="historySection" class="section">
-                <div class="history-container">
-                    <h2><i class="fas fa-history"></i> История операций</h2>
-                    
-                    <div class="history-tabs">
-                        <button class="history-tab active" onclick="showHistoryTab('games')">Игры</button>
-                        <button class="history-tab" onclick="showHistoryTab('deposits')">Пополнения</button>
-                        <button class="history-tab" onclick="showHistoryTab('withdrawals')">Выводы</button>
-                    </div>
-                    
-                    <div id="gamesHistory" class="history-content">
-                        <!-- История игр -->
-                    </div>
-                    
-                    <div id="depositsHistory" class="history-content" style="display:none;">
-                        <!-- История пополнений -->
-                    </div>
-                    
-                    <div id="withdrawalsHistory" class="history-content" style="display:none;">
-                        <!-- История выводов -->
-                    </div>
-                </div>
             </div>
         </main>
 
         <!-- Нижняя навигация -->
         <footer class="bottom-nav">
-            <button class="bottom-nav-btn" onclick="showSection('games')">
+            <button class="bottom-nav-btn active" onclick="showMainGames()">
                 <i class="fas fa-home"></i>
-                <span>Главная</span>
+                <span>Игры</span>
             </button>
-            <button class="bottom-nav-btn" onclick="showSection('history')">
-                <i class="fas fa-history"></i>
-                <span>История</span>
-            </button>
-            <button class="bottom-nav-btn" onclick="window.open('https://t.me/bezdarlfkbf')">
+            <button class="bottom-nav-btn" onclick="window.open('https://t.me/bezdarlfkbf', '_blank')">
                 <i class="fab fa-telegram"></i>
-                <span>Канал</span>
+                <span>Telegram</span>
             </button>
-            <button class="bottom-nav-btn" onclick="openProfile()">
-                <i class="fas fa-user"></i>
-                <span>Профиль</span>
+            <button class="bottom-nav-btn" onclick="openStats()">
+                <i class="fas fa-chart-bar"></i>
+                <span>Статистика</span>
             </button>
         </footer>
+    </div>
 
-        <!-- Админ панель -->
-        <div id="adminModal" class="modal">
-            <div class="modal-content admin-panel">
-                <span class="close" onclick="closeAdminPanel()">&times;</span>
-                <h2><i class="fas fa-user-shield"></i> Панель администратора</h2>
-                
-                <div class="password-section">
-                    <input type="password" id="adminPassword" placeholder="Введите пароль администратора">
-                    <button onclick="loginAdmin()">Войти</button>
-                </div>
-                
-                <div id="adminContent" style="display:none;">
-                    <div class="admin-tabs">
-                        <button class="tab-btn active" onclick="switchTab('deposits')">Пополнения</button>
-                        <button class="tab-btn" onclick="switchTab('withdrawals')">Выводы</button>
-                        <button class="tab-btn" onclick="switchTab('users')">Пользователи</button>
-                    </div>
-                    
-                    <div id="depositsTab" class="tab-content">
-                        <h3>Ожидающие пополнения</h3>
-                        <div id="pendingDeposits"></div>
-                    </div>
-                    
-                    <div id="withdrawalsTab" class="tab-content" style="display:none;">
-                        <h3>Ожидающие выводы</h3>
-                        <div id="pendingWithdrawals"></div>
-                    </div>
-                    
-                    <div id="usersTab" class="tab-content" style="display:none;">
-                        <h3>Управление пользователями</h3>
-                        <div id="usersList"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Модальное окно результата -->
-        <div id="resultModal" class="modal">
-            <div class="modal-content result-modal">
-                <div id="resultContent"></div>
-                <button class="continue-btn" onclick="closeResultModal()">Продолжить</button>
-            </div>
-        </div>
-
-        <!-- Модальное окно профиля -->
-        <div id="profileModal" class="modal">
-            <div class="modal-content profile-modal">
-                <span class="close" onclick="closeProfileModal()">&times;</span>
-                <div class="profile-header">
-                    <div class="profile-avatar">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="profile-info">
-                        <h3>ID: <span id="profileId">12345</span></h3>
-                        <div class="profile-balance">
-                            <i class="fas fa-star"></i>
-                            <span id="profileBalance">1020</span> звёзд
-                        </div>
-                    </div>
-                </div>
-                
-                <button class="deposit-profile-btn" onclick="showSection('deposit')">
-                    <i class="fas fa-plus"></i> Пополнить
-                </button>
-                
-                <div class="profile-stats">
-                    <div class="profile-stat">
-                        <span>Игр сыграно</span>
-                        <strong id="profileGamesPlayed">0</strong>
-                    </div>
-                    <div class="profile-stat">
-                        <span>Общий выигрыш</span>
-                        <strong id="profileTotalWins">0</strong>
-                    </div>
-                    <div class="profile-stat">
-                        <span>Лучший выигрыш</span>
-                        <strong id="profileBestWin">0</strong>
-                    </div>
-                </div>
-            </div>
+    <!-- Модальное окно результата -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <div id="resultContent"></div>
+            <button onclick="closeModal()">OK</button>
         </div>
     </div>
 
