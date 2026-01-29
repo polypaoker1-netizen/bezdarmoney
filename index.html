@@ -2149,252 +2149,314 @@
                 };
             }
         }
-      // ==================== ИНТЕГРАЦИЯ С TELEGRAM БОТОМ ====================
+     // ==================== ИНТЕГРАЦИЯ С TELEGRAM БОТОМ ====================
 
-// Telegram Bot Data
 const TELEGRAM_BOT_USERNAME = "BezdarMoneyBot";
-const BOT_DEEP_LINK = `https://t.me/${TELEGRAM_BOT_USERNAME}`;
+const TELEGRAM_BOT_LINK = `https://t.me/${TELEGRAM_BOT_USERNAME}`;
 
-// Генерация/получение User ID
-function getOrCreateUserId() {
-    let userId = localStorage.getItem('telegramUserId');
+// Уникальный ID пользователя
+function getUserId() {
+    let userId = localStorage.getItem('bezdarUserId');
     
     if (!userId) {
-        // Генерируем новый ID
-        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('telegramUserId', userId);
-        console.log('📝 Создан новый ID пользователя:', userId);
+        // Генерируем ID вида: telegram_123456789
+        userId = `telegram_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+        localStorage.setItem('bezdarUserId', userId);
+        
+        // Показываем уведомление с ID
+        showNotification(`Ваш ID для бота: ${userId}`, 'info');
     }
     
     return userId;
 }
 
-// Проверка пополнения баланса
-async function checkBalanceUpdates() {
-    const userId = getOrCreateUserId();
+// Обновление баланса с сервера
+async function updateBalanceFromServer() {
+    const userId = getUserId();
     
     try {
-        // В реальном проекте здесь будет запрос к вашему API
-        // Пример URL для теста:
-        // const response = await fetch(`https://ваш-сервер.com/api/balance?user_id=${userId}`);
+        // В реальном проекте здесь будет запрос к API
+        // const response = await fetch(`/api/balance/${userId}`);
+        // const data = await response.json();
+        // return data.balance || 0;
         
-        // Для демо - симулируем ответ
-        const simulatedBalance = Math.floor(Math.random() * 10000); // Убрать в продакшене
-        
-        // Проверяем, было ли пополнение
-        const lastBalance = parseInt(localStorage.getItem('lastKnownBalance')) || 0;
-        const serverBalance = simulatedBalance; // Заменить на данные с сервера
-        
-        if (serverBalance > lastBalance) {
-            const difference = serverBalance - lastBalance;
-            userBalance += difference;
-            updateBalanceDisplay();
-            localStorage.setItem('lastKnownBalance', serverBalance);
-            
-            showNotification(`💰 Баланс пополнен на ${difference}⭐! Новый баланс: ${userBalance}⭐`, 'success');
-        }
-        
-        // Для теста - обновляем каждые 10 секунд
-        setTimeout(checkBalanceUpdates, 10000);
+        // Для демо - возвращаем текущий баланс
+        return userBalance;
         
     } catch (error) {
-        console.error('Ошибка проверки баланса:', error);
-        // Повторяем через 30 секунд при ошибке
-        setTimeout(checkBalanceUpdates, 30000);
+        console.error('Ошибка получения баланса:', error);
+        return userBalance;
     }
 }
 
 // Открытие бота для пополнения
-function openBotForDeposit() {
-    const userId = getOrCreateUserId();
-    const currentBalance = userBalance;
+function openTelegramBotForDeposit() {
+    const userId = getUserId();
     
     // Создаем deep link с параметрами
-    const startParam = `site_${userId}_${currentBalance}`;
-    const botUrl = `${BOT_DEEP_LINK}?start=${startParam}`;
+    const startParam = `deposit_${userId}`;
+    const botUrl = `${TELEGRAM_BOT_LINK}?start=${startParam}`;
     
-    // Открываем в новом окне
+    // Открываем бота
     window.open(botUrl, '_blank', 'noopener,noreferrer');
     
     // Показываем инструкцию
-    showNotification(`🔄 Открываю бота для пополнения...\nВаш ID: ${userId}`, 'info');
+    showNotification(`
+        📱 <b>Инструкция по пополнению:</b><br><br>
+        1. В боте нажмите "Пополнить баланс"<br>
+        2. Выберите сумму<br>
+        3. Нажмите "Отправить N ⭐"<br>
+        4. Отправьте звёзды боту<br>
+        5. Вернитесь на сайт и обновите страницу
+    `, 'info');
     
-    // Начинаем проверку обновлений
-    setTimeout(checkBalanceUpdates, 3000);
+    // Запускаем проверку обновлений
+    startBalanceChecker();
+}
+
+// Проверка обновлений баланса
+let balanceCheckInterval = null;
+
+function startBalanceChecker() {
+    if (balanceCheckInterval) {
+        clearInterval(balanceCheckInterval);
+    }
+    
+    balanceCheckInterval = setInterval(async () => {
+        const serverBalance = await updateBalanceFromServer();
+        
+        if (serverBalance !== userBalance) {
+            const difference = serverBalance - userBalance;
+            userBalance = serverBalance;
+            updateBalanceDisplay();
+            saveToStorage();
+            
+            if (difference > 0) {
+                showNotification(`💰 Баланс пополнен на ${difference}⭐! Новый баланс: ${userBalance}⭐`, 'success');
+            }
+            
+            // Останавливаем проверку через 5 минут
+            setTimeout(() => {
+                if (balanceCheckInterval) {
+                    clearInterval(balanceCheckInterval);
+                    balanceCheckInterval = null;
+                }
+            }, 300000); // 5 минут
+        }
+    }, 5000); // Проверка каждые 5 секунд
 }
 
 // Обновление модального окна пополнения
-function updateDepositModalContent() {
+function updateDepositModal() {
     const depositModal = document.getElementById('depositModal');
     if (!depositModal) return;
     
     const modalContent = depositModal.querySelector('.modal-content');
     if (!modalContent) return;
     
-    const userId = getOrCreateUserId();
+    const userId = getUserId();
     
-    // Обновляем текст
-    const depositText = `
+    const newContent = `
+        <button class="modal-close" onclick="hideModal('depositModal')">×</button>
         <h2 style="color: #00ff00; margin-bottom: 20px;">💰 ПОПОЛНЕНИЕ БАЛАНСА</h2>
         
         <div style="margin: 20px 0;">
-            <p style="color: #ffd700; margin-bottom: 15px;">
-                Ваш текущий баланс: <span id="modal-balance" style="color: #00ff00; font-weight: bold;">${userBalance}</span> ⭐
-            </p>
-            
-            <p style="color: #ffd700; margin-bottom: 10px;">
-                Ваш ID для бота: <code style="background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px;">${userId}</code>
-            </p>
-            
-            <div style="background: rgba(255, 215, 0, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #ffd700;">
-                <p style="color: #00ff00; font-weight: bold; margin-bottom: 10px;">
-                    ⚡ Для пополнения:
+            <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <p style="color: #ffd700; margin-bottom: 10px;">
+                    📊 <b>Текущий баланс:</b> <span id="modal-balance" style="color: #00ff00; font-weight: bold;">${userBalance}</span> ⭐
                 </p>
-                <p style="color: #ffd700; margin-bottom: 5px;">
-                    1. Нажмите кнопку "ПЕРЕЙТИ В БОТА" ниже
-                </p>
-                <p style="color: #ffd700; margin-bottom: 5px;">
-                    2. В боте нажмите "Пополнить баланс"
-                </p>
-                <p style="color: #ffd700; margin-bottom: 5px;">
-                    3. Выберите сумму и оплатите
-                </p>
-                <p style="color: #ffd700;">
-                    4. Баланс обновится автоматически через 5-10 секунд
+                <p style="color: #00ff00; font-size: 14px;">
+                    🆔 <b>Ваш ID:</b> <code style="background: rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 4px;">${userId}</code>
                 </p>
             </div>
             
-            <div style="text-align: center; margin: 25px 0;">
-                <div style="display: inline-block; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
-                    <div style="font-size: 14px; color: #000; margin-bottom: 10px; font-weight: bold;">
-                        Отсканируйте QR-код или нажмите кнопку
+            <div style="background: rgba(138, 43, 226, 0.2); padding: 20px; border-radius: 10px; border: 2px solid #ffd700; margin: 20px 0;">
+                <p style="color: #00ff00; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
+                    ⚡ ПОПОЛНЕНИЕ ЧЕРЕЗ TELEGRAM БОТА
+                </p>
+                
+                <div style="color: #ffd700; margin-bottom: 15px;">
+                    <p>📱 <b>1. Перейдите в нашего бота:</b></p>
+                    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; margin: 10px 0; border: 1px solid #8a2be2;">
+                        <span style="color: #00ff00; font-weight: bold;">@${TELEGRAM_BOT_USERNAME}</span>
                     </div>
-                    <div style="width: 180px; height: 180px; background: #f8f8f8; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto; border: 3px solid #ffd700;">
-                        <div style="font-size: 60px; margin-bottom: 10px;">🤖</div>
-                        <div style="color: #333; font-size: 16px; font-weight: bold;">@${TELEGRAM_BOT_USERNAME}</div>
-                        <div style="color: #666; font-size: 12px; margin-top: 5px;">Telegram Bot</div>
+                </div>
+                
+                <div style="color: #ffd700; margin-bottom: 15px;">
+                    <p>💎 <b>2. Выберите сумму пополнения в боте</b></p>
+                    <p>💰 <b>3. Отправьте звёзды боту</b></p>
+                    <p>🔄 <b>4. Вернитесь на сайт и обновите страницу</b></p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <div style="display: inline-block; background: white; padding: 15px; border-radius: 10px;">
+                        <div style="font-size: 12px; color: #000; margin-bottom: 5px; font-weight: bold;">QR-код для бота</div>
+                        <div style="width: 150px; height: 150px; background: #f0f0f0; border-radius: 5px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 40px;">🤖</div>
+                                <div style="color: #333; font-size: 14px; font-weight: bold;">@${TELEGRAM_BOT_USERNAME}</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <button class="btn btn-success" onclick="openBotForDeposit()" style="margin-top: 20px; width: 100%; font-size: 18px; padding: 18px;">
+            <button class="btn btn-success" onclick="openTelegramBotForDeposit()" 
+                    style="margin-top: 20px; width: 100%; font-size: 18px; padding: 18px; background: linear-gradient(45deg, #27ae60, #2ecc71); border: 3px solid #ffd700;">
                 📱 ПЕРЕЙТИ В TELEGRAM БОТА
             </button>
             
             <div style="margin-top: 20px; color: #ff9999; font-size: 12px; text-align: center;">
-                ⚠️ После оплаты в боте вернитесь на сайт и обновите страницу
+                ⚠️ После пополнения в боте обновите эту страницу (F5)
             </div>
         </div>
     `;
     
-    // Обновляем содержимое
-    modalContent.innerHTML = `
-        <button class="modal-close" onclick="hideModal('depositModal')">×</button>
-        ${depositText}
-    `;
+    modalContent.innerHTML = newContent;
 }
 
-// Функция для проверки URL параметров
-function checkUrlParams() {
-    const urlParams = new URLSearchParams(window.location.search);
+// Обновление модального окна вывода
+function updateWithdrawModal() {
+    const withdrawModal = document.getElementById('withdrawModal');
+    if (!withdrawModal) return;
     
-    // Проверяем параметры от бота
-    const telegramId = urlParams.get('telegram_id');
-    const balanceUpdate = urlParams.get('balance');
+    const modalContent = withdrawModal.querySelector('.modal-content');
+    if (!modalContent) return;
     
-    if (telegramId) {
-        localStorage.setItem('telegramUserId', telegramId);
-        console.log('✅ Получен Telegram ID из URL:', telegramId);
-    }
-    
-    if (balanceUpdate) {
-        const newBalance = parseInt(balanceUpdate);
-        if (!isNaN(newBalance)) {
-            userBalance = newBalance;
-            updateBalanceDisplay();
-            saveToStorage();
-            showNotification(`✅ Баланс обновлен: ${newBalance}⭐`, 'success');
+    const newContent = `
+        <button class="modal-close" onclick="hideModal('withdrawModal')">×</button>
+        <h2 style="color: #ffd700; margin-bottom: 20px;">💸 ВЫВОД СРЕДСТВ</h2>
+        
+        <div style="margin: 20px 0;">
+            <p style="color: #ffd700; margin-bottom: 15px;">
+                📊 <b>Доступно для вывода:</b> <span id="withdraw-balance" style="color: #00ff00; font-weight: bold;">${userBalance}</span> ⭐
+            </p>
             
-            // Убираем параметры из URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
+            <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #ffd700;">
+                <p style="color: #ff9999; font-size: 14px; margin-bottom: 15px;">
+                    ⚠️ <b>Вывод осуществляется через Telegram бота</b>
+                </p>
+                
+                <div style="color: #00ff00; margin-bottom: 15px;">
+                    <p><b>Для вывода средств:</b></p>
+                    <p>1. Перейдите в нашего бота: @${TELEGRAM_BOT_USERNAME}</p>
+                    <p>2. Нажмите "Вывод средств"</p>
+                    <p>3. Введите сумму и username</p>
+                    <p>4. Подтвердите заявку</p>
+                    <p>5. Админ свяжется с вами</p>
+                </div>
+                
+                <div style="color: #ffd700; margin-top: 15px;">
+                    <p>📱 <b>Бот для вывода:</b></p>
+                    <div style="background: rgba(138, 43, 226, 0.3); padding: 10px; border-radius: 5px; margin: 10px 0; text-align: center; border: 1px solid #ffd700;">
+                        <span style="color: #00ff00; font-weight: bold; font-size: 16px;">@${TELEGRAM_BOT_USERNAME}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-warning" onclick="openTelegramBotForWithdraw()" 
+                    style="margin-top: 20px; width: 100%; font-size: 18px; padding: 18px;">
+                📱 ПЕРЕЙТИ В БОТА ДЛЯ ВЫВОДА
+            </button>
+            
+            <div style="margin-top: 20px; color: #ff9999; font-size: 12px; text-align: center;">
+                ⚠️ Минимальная сумма вывода: 100⭐
+            </div>
+        </div>
+    `;
+    
+    modalContent.innerHTML = newContent;
+}
+
+// Открытие бота для вывода
+function openTelegramBotForWithdraw() {
+    const botUrl = `${TELEGRAM_BOT_LINK}?start=withdraw`;
+    window.open(botUrl, '_blank', 'noopener,noreferrer');
+    
+    showNotification('📱 Открываю бота для вывода средств...', 'info');
+}
+
+// Инициализация
+function initTelegramIntegration() {
+    // Получаем/создаем ID
+    const userId = getUserId();
+    console.log('👤 User ID:', userId);
+    
+    // Обновляем модальные окна
+    updateDepositModal();
+    updateWithdrawModal();
+    
+    // Добавляем кнопку копирования ID
+    addCopyIdButton();
+}
+
+// Добавление кнопки копирования ID
+function addCopyIdButton() {
+    // В меню
+    const menuContainer = document.querySelector('.header .user-info');
+    if (menuContainer) {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn';
+        copyBtn.style.marginLeft = '10px';
+        copyBtn.style.background = 'linear-gradient(45deg, #3498db, #1e90ff)';
+        copyBtn.innerHTML = '📋 ID';
+        copyBtn.title = 'Скопировать ID для бота';
+        copyBtn.onclick = function() {
+            const userId = getUserId();
+            navigator.clipboard.writeText(userId).then(() => {
+                showNotification('✅ ID скопирован в буфер обмена!', 'success');
+            });
+        };
+        menuContainer.appendChild(copyBtn);
     }
 }
 
-// Инициализация интеграции
-function initTelegramIntegration() {
-    // Проверяем параметры URL
-    checkUrlParams();
-    
-    // Обновляем модальное окно
-    updateDepositModalContent();
-    
-    // Начинаем проверку обновлений
-    setTimeout(checkBalanceUpdates, 5000);
-    
-    // Обновляем ID в интерфейсе
-    const userId = getOrCreateUserId();
-    console.log('👤 User ID:', userId);
-}
-
-// Обновляем функцию showModal для пополнения
+// Переопределяем функции показа модальных окон
 const originalShowModal = showModal;
 showModal = function(modalId) {
     originalShowModal(modalId);
     
     if (modalId === 'depositModal') {
-        // Обновляем содержимое модалки при каждом открытии
-        setTimeout(updateDepositModalContent, 100);
-        
-        // Показываем инструкцию
-        showNotification('📱 Для пополнения перейдите в нашего Telegram бота', 'info');
+        setTimeout(updateDepositModal, 100);
+    } else if (modalId === 'withdrawModal') {
+        setTimeout(updateWithdrawModal, 100);
     }
 };
 
-// Инициализируем при загрузке
+// Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(initTelegramIntegration, 2000);
+    setTimeout(initTelegramIntegration, 1000);
     
-    // Обновляем баланс в реальном времени каждую минуту
-    setInterval(function() {
-        updateBalanceDisplay();
-    }, 60000);
+    // Обновляем баланс каждые 30 секунд
+    setInterval(async () => {
+        const serverBalance = await updateBalanceFromServer();
+        if (serverBalance !== userBalance) {
+            userBalance = serverBalance;
+            updateBalanceDisplay();
+            saveToStorage();
+        }
+    }, 30000);
 });
 
-// Добавляем кнопку "Скопировать ID" в статистику
-function addCopyIdButton() {
-    const statsBtn = document.querySelector('.btn[onclick="showStats()"]');
-    if (statsBtn) {
-        statsBtn.addEventListener('click', function() {
-            setTimeout(function() {
-                const userId = getOrCreateUserId();
-                const copyBtn = document.createElement('button');
-                copyBtn.className = 'btn btn-warning';
-                copyBtn.style.margin = '10px auto';
-                copyBtn.style.display = 'block';
-                copyBtn.innerHTML = '📋 Скопировать ID для бота';
-                copyBtn.onclick = function() {
-                    navigator.clipboard.writeText(userId).then(function() {
-                        showNotification('✅ ID скопирован в буфер обмена!', 'success');
-                    });
-                };
-                
-                const statsWindow = document.getElementById('stats-window');
-                if (statsWindow) {
-                    const table = statsWindow.querySelector('.stats-table');
-                    if (table) {
-                        table.parentNode.insertBefore(copyBtn, table.nextSibling);
-                    }
-                }
-            }, 100);
-        });
+// Функция для обновления баланса (используется ботом через API)
+window.updateUserBalance = function(newBalance) {
+    if (typeof newBalance === 'number' && !isNaN(newBalance)) {
+        const oldBalance = userBalance;
+        userBalance = newBalance;
+        updateBalanceDisplay();
+        saveToStorage();
+        
+        if (newBalance > oldBalance) {
+            showNotification(`💰 Баланс обновлен! +${newBalance - oldBalance}⭐`, 'success');
+        }
+        
+        return true;
     }
-}
-
-// Инициализируем кнопку копирования
-setTimeout(addCopyIdButton, 3000);
+    return false;
+};
     </script>
 </body>
 </html>
+
 
 
