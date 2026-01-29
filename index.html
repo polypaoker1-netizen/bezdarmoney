@@ -1365,6 +1365,8 @@
     <script>
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
         let userBalance = 0;
+        let userId = null;
+        let sessionToken = null;
         let gameHistory = {
             crash: { games: 0, wins: 0, losses: 0, profit: 0 },
             mines: { games: 0, wins: 0, losses: 0, profit: 0 },
@@ -1404,16 +1406,16 @@
         let diceBetAmount = 0;
         let diceRolling = false;
 
+        // API конфигурация
+        // ЗАМЕНИТЕ ЭТОТ URL на реальный URL вашего бота на хостинге
+        const API_URL = 'https://ваш-домен.com'; 
+        // Для локального тестирования используйте: const API_URL = 'http://localhost:8080';
+
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('loader').style.display = 'none';
             createStars();
-            loadFromStorage();
-            updateBalanceDisplay();
-            updateStatsDisplay();
-            
-            document.getElementById('modal-balance').textContent = userBalance;
-            document.getElementById('withdraw-balance').textContent = userBalance;
+            initLoginSystem();
             
             const diceSlider = document.getElementById('dice-guess');
             const guessValue = document.getElementById('guess-value');
@@ -1426,6 +1428,186 @@
                 showNotification('💰 Добро пожаловать в BezdarMoney Casino!', 'info');
             }, 1000);
         });
+
+        // ==================== СИСТЕМА АВТОРИЗАЦИИ ====================
+        function initLoginSystem() {
+            // Проверяем параметры URL (для входа через Telegram бота)
+            const urlParams = new URLSearchParams(window.location.search);
+            const tgUserId = urlParams.get('user_id');
+            const tgSession = urlParams.get('session');
+            
+            if (tgUserId && tgSession) {
+                // Сохраняем данные сессии
+                localStorage.setItem('tg_user_id', tgUserId);
+                localStorage.setItem('tg_session', tgSession);
+                
+                // Загружаем баланс с сервера
+                userId = parseInt(tgUserId);
+                sessionToken = tgSession;
+                loadBalanceFromServer();
+            } else {
+                // Пробуем загрузить из localStorage
+                const savedUserId = localStorage.getItem('tg_user_id');
+                const savedSession = localStorage.getItem('tg_session');
+                
+                if (savedUserId && savedSession) {
+                    userId = parseInt(savedUserId);
+                    sessionToken = savedSession;
+                    loadBalanceFromServer();
+                } else {
+                    // Показываем окно входа
+                    showLoginModal();
+                }
+            }
+            
+            // Загружаем локальные данные
+            loadFromStorage();
+            updateStatsDisplay();
+        }
+
+        function showLoginModal() {
+            const modalHTML = `
+                <div id="loginModal" class="modal" style="display: flex;">
+                    <div class="modal-content">
+                        <h2 style="color: #ffd700; margin-bottom: 20px;">🔐 ВХОД В BEZDARMONEY</h2>
+                        <div style="margin: 20px 0;">
+                            <p style="color: #ffd700; margin-bottom: 20px;">
+                                Для игры необходимо авторизоваться через Telegram бота
+                            </p>
+                            <div style="background: rgba(0,255,0,0.1); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #00ff00;">
+                                <h3 style="color: #00ff00;">📱 Как войти:</h3>
+                                <ol style="color: #ffd700; text-align: left; margin: 15px 0; padding-left: 20px;">
+                                    <li>Перейдите в нашего бота: <strong>@BezdarMoneyBot</strong></li>
+                                    <li>Нажмите кнопку "🎮 Играть на сайте"</li>
+                                    <li>Вы будете автоматически перенаправлены на сайт</li>
+                                    <li>Ваш баланс синхронизируется</li>
+                                </ol>
+                            </div>
+                            <button class="btn btn-success" onclick="goToBot()" style="margin-top: 20px; width: 100%;">
+                                ПЕРЕЙТИ В БОТА ДЛЯ ВХОДА
+                            </button>
+                            <button class="btn btn-warning" onclick="demoMode()" style="margin-top: 10px; width: 100%;">
+                                🎮 ДЕМО-РЕЖИМ (без реальных денег)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = modalHTML;
+            document.body.appendChild(modalContainer);
+        }
+
+        function goToBot() {
+            window.open('https://t.me/BezdarMoneyBot', '_blank');
+        }
+
+        function demoMode() {
+            // Скрываем модальное окно
+            const modal = document.getElementById('loginModal');
+            if (modal) modal.remove();
+            
+            // Устанавливаем демо-режим
+            userId = 0;
+            sessionToken = 'demo';
+            userBalance = 10000; // Начальный баланс в демо-режиме
+            
+            updateBalanceDisplay();
+            showNotification('🎮 Включен демо-режим! Играйте бесплатно!', 'success');
+        }
+
+        async function loadBalanceFromServer() {
+            try {
+                const response = await fetch(`${API_URL}/api/balance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        session_token: sessionToken
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    userBalance = data.balance;
+                    updateBalanceDisplay();
+                    showNotification(`💰 Баланс синхронизирован: ${userBalance}⭐`, 'success');
+                } else {
+                    showNotification('❌ Ошибка синхронизации баланса', 'error');
+                    // Пробуем создать новую сессию
+                    await createNewSession();
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки баланса:', error);
+                showNotification('⚠️ Не удалось загрузить баланс. Используется локальная версия', 'warning');
+                loadFromStorage();
+            }
+        }
+
+        async function createNewSession() {
+            try {
+                const response = await fetch(`${API_URL}/api/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    sessionToken = data.session_token;
+                    localStorage.setItem('tg_session', sessionToken);
+                    userBalance = data.balance;
+                    updateBalanceDisplay();
+                    showNotification('✅ Сессия восстановлена!', 'success');
+                }
+            } catch (error) {
+                console.error('Ошибка создания сессии:', error);
+            }
+        }
+
+        async function updateBalanceOnServer(amount, gameType, win = true) {
+            if (userId === 0 || sessionToken === 'demo') {
+                // В демо-режиме не отправляем на сервер
+                return userBalance;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/webhook`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        secret: 'bezdar_casino_secret_2024',
+                        user_id: userId,
+                        amount: amount,
+                        game_type: gameType,
+                        win: win
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    userBalance = data.new_balance;
+                    updateBalanceDisplay();
+                    return userBalance;
+                }
+            } catch (error) {
+                console.error('Ошибка обновления баланса:', error);
+            }
+            
+            return userBalance;
+        }
 
         // ==================== ФУНКЦИИ ОБЩИЕ ====================
         function createStars() {
@@ -1451,10 +1633,19 @@
             document.getElementById('withdraw-balance').textContent = userBalance;
         }
 
-        function updateBalance(amount) {
+        function updateBalance(amount, gameType = 'other', win = true) {
+            const oldBalance = userBalance;
             userBalance += amount;
             updateBalanceDisplay();
+            
+            // Сохраняем локально
             saveToStorage();
+            
+            // Обновляем на сервере (если не демо-режим)
+            if (userId !== 0 && sessionToken !== 'demo' && amount !== 0) {
+                updateBalanceOnServer(Math.abs(amount), gameType, win);
+            }
+            
             return userBalance;
         }
 
@@ -1497,6 +1688,11 @@
         }
 
         function showModal(modalId) {
+            if (userId === null && modalId !== 'bonusModal') {
+                showLoginModal();
+                return;
+            }
+            
             document.getElementById(modalId).style.display = 'flex';
         }
 
@@ -1506,6 +1702,11 @@
 
         // ==================== УПРАВЛЕНИЕ ИГРАМИ ====================
         function startGame(game) {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
             document.querySelectorAll('.game-window').forEach(el => {
                 el.style.display = 'none';
             });
@@ -1556,7 +1757,12 @@
             document.getElementById('crash-bet').value = amount;
         }
 
-        function placeCrashBet() {
+        async function placeCrashBet() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
             const betInput = document.getElementById('crash-bet');
             const bet = parseInt(betInput.value);
             
@@ -1575,7 +1781,7 @@
                 return;
             }
             
-            updateBalance(-bet);
+            updateBalance(-bet, 'crash', false);
             crashBetAmount = bet;
             crashActive = true;
             crashCashedOut = false;
@@ -1618,7 +1824,7 @@
             }
         }
 
-        function cashOut() {
+        async function cashOut() {
             if (!crashActive || crashCashedOut) return;
             
             // Проверяем минимальный множитель 1.4x
@@ -1632,7 +1838,7 @@
             clearInterval(crashInterval);
             
             const winAmount = Math.floor(crashBetAmount * crashMultiplier);
-            updateBalance(winAmount);
+            updateBalance(winAmount, 'crash', true);
             
             showWinAnimation('+ ' + winAmount + ' ⭐');
             showNotification('Поздравляем! Вы успели забрать деньги!', 'success');
@@ -1715,7 +1921,12 @@
             document.getElementById('moves-count').textContent = '0';
         }
 
-        function startMinesGame() {
+        async function startMinesGame() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
             const betInput = document.getElementById('mines-bet');
             const bet = parseInt(betInput.value);
             
@@ -1734,7 +1945,7 @@
                 return;
             }
             
-            updateBalance(-bet);
+            updateBalance(-bet, 'mines', false);
             minesBetAmount = bet;
             minesGameActive = true;
             minesCashoutAmount = bet;
@@ -1756,7 +1967,7 @@
             showNotification('Игра началась! Находите драгоценности 💎', 'success');
         }
 
-        function revealMine(index) {
+        async function revealMine(index) {
             if (!minesGameActive || minesGrid[index].revealed) return;
             
             minesStep++;
@@ -1790,7 +2001,7 @@
                 const safeCellsLeft = minesGrid.filter(cell => !cell.revealed && !cell.isMine).length;
                 if (safeCellsLeft === 0) {
                     const winAmount = minesCashoutAmount;
-                    updateBalance(winAmount);
+                    updateBalance(winAmount, 'mines', true);
                     
                     showWinAnimation('ВЫИГРЫШ: ' + winAmount + ' ⭐');
                     showNotification('Вы нашли все драгоценности! Поздравляем!', 'success');
@@ -1810,11 +2021,11 @@
             }
         }
 
-        function cashOutMines() {
+        async function cashOutMines() {
             if (!minesGameActive) return;
             
             const winAmount = minesCashoutAmount;
-            updateBalance(winAmount);
+            updateBalance(winAmount, 'mines', true);
             
             showWinAnimation('+ ' + winAmount + ' ⭐');
             showNotification('Вы забрали деньги!', 'success');
@@ -1836,6 +2047,11 @@
         }
 
         function placeRouletteBet(color) {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
             if (rouletteSpinning) {
                 showNotification('Дождитесь окончания вращения!', 'error');
                 return;
@@ -1860,7 +2076,12 @@
             showNotification('Ставка принята: ' + color, 'info');
         }
 
-        function spinRoulette() {
+        async function spinRoulette() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
             if (rouletteSpinning) {
                 showNotification('Рулетка уже крутится!', 'error');
                 return;
@@ -1871,7 +2092,7 @@
                 return;
             }
             
-            updateBalance(-rouletteBetAmount);
+            updateBalance(-rouletteBetAmount, 'roulette', false);
             rouletteSpinning = true;
             document.getElementById('roulette-spin-btn').disabled = true;
             
@@ -1881,7 +2102,7 @@
             wheel.style.animation = 'spin 0.5s linear infinite';
             ball.style.animation = 'ballOrbit 0.5s linear infinite';
             
-            setTimeout(() => {
+            setTimeout(async () => {
                 const random = Math.random() * 100;
                 let resultColor, multiplier;
                 
@@ -1899,10 +2120,10 @@
                 wheel.style.animation = 'none';
                 ball.style.animation = 'none';
                 
-                setTimeout(() => {
+                setTimeout(async () => {
                     if (resultColor === rouletteBetColor) {
                         const winAmount = Math.floor(rouletteBetAmount * multiplier);
-                        updateBalance(winAmount);
+                        updateBalance(winAmount, 'roulette', true);
                         
                         showWinAnimation('ВЫИГРЫШ: x' + multiplier);
                         showNotification('Поздравляем! Вы угадали цвет! +' + winAmount + '⭐', 'success');
@@ -1946,7 +2167,12 @@
             document.getElementById('slots-result').textContent = '';
         }
 
-        function spinSlots() {
+        async function spinSlots() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
             if (slotsSpinning) {
                 showNotification('Слоты уже крутятся!', 'error');
                 return;
@@ -1965,7 +2191,7 @@
                 return;
             }
             
-            updateBalance(-bet);
+            updateBalance(-bet, 'slots', false);
             slotsBetAmount = bet;
             slotsSpinning = true;
             document.getElementById('slots-spin-btn').disabled = true;
@@ -2005,7 +2231,7 @@
             }, 2000);
         }
 
-        function checkSlotsWin(results, bet) {
+        async function checkSlotsWin(results, bet) {
             let winMultiplier = 0;
             let winMessage = '';
             
@@ -2042,7 +2268,7 @@
             
             if (winMultiplier > 0) {
                 const winAmount = Math.floor(bet * winMultiplier);
-                updateBalance(winAmount);
+                updateBalance(winAmount, 'slots', true);
                 
                 showWinAnimation(winMessage);
                 showNotification('Выигрыш: ' + winAmount + '⭐', 'success');
@@ -2101,7 +2327,12 @@
             document.getElementById('dice-bet').value = amount;
         }
 
-        function rollDice() {
+        async function rollDice() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
             if (diceRolling) {
                 showNotification('Кости уже бросаются!', 'error');
                 return;
@@ -2121,7 +2352,7 @@
                 return;
             }
             
-            updateBalance(-bet);
+            updateBalance(-bet, 'dice', false);
             diceBetAmount = bet;
             diceRolling = true;
             document.getElementById('dice-roll-btn').disabled = true;
@@ -2129,7 +2360,7 @@
             const diceResult = document.getElementById('dice-result');
             diceResult.style.animation = 'diceRoll 1s';
             
-            setTimeout(() => {
+            setTimeout(async () => {
                 const randomNumber = Math.floor(Math.random() * 100) + 1;
                 diceResult.textContent = randomNumber;
                 
@@ -2146,7 +2377,7 @@
                 
                 if (winMultiplier > 0) {
                     const winAmount = Math.floor(bet * winMultiplier);
-                    updateBalance(winAmount);
+                    updateBalance(winAmount, 'dice', true);
                     
                     showWinAnimation('x' + winMultiplier);
                     showNotification('Вы угадали! +' + winAmount + '⭐', 'success');
@@ -2177,13 +2408,17 @@
 
         // ==================== ПОПОЛНЕНИЕ И ВЫВОД ====================
         function goToBot() {
-            showNotification('Перейдите в @BezdarMoneyBot для пополнения', 'info');
             window.open('https://t.me/BezdarMoneyBot', '_blank');
         }
 
-        function createWithdrawal() {
+        async function createWithdrawal() {
             const amount = parseInt(document.getElementById('withdraw-amount').value);
             const username = document.getElementById('withdraw-username').value.trim();
+            
+            if (userId === 0 || sessionToken === 'demo') {
+                showNotification('В демо-режиме вывод недоступен', 'warning');
+                return;
+            }
             
             if (isNaN(amount) || amount < 100) {
                 showNotification('Минимальная сумма вывода: 100⭐', 'error');
@@ -2200,19 +2435,21 @@
                 return;
             }
             
-            updateBalance(-amount);
+            updateBalance(-amount, 'withdrawal', false);
             
             showNotification('Заявка на вывод создана! Админ свяжется с вами в Telegram', 'success');
             hideModal('withdrawModal');
             
+            // Здесь можно добавить отправку заявки на сервер
             console.log('📤 ЗАЯВКА НА ВЫВОД:');
-            console.log('👤 Username:', username);
+            console.log('👤 User ID:', userId);
             console.log('💰 Сумма:', amount + '⭐');
+            console.log('📱 Username:', username);
             console.log('⏰ Время:', new Date().toLocaleString());
         }
 
         // ==================== БОНУСЫ И ПРОМОКОДЫ ====================
-        function activatePromoCode() {
+        async function activatePromoCode() {
             const promoCode = document.getElementById('promo-code').value.trim().toUpperCase();
             
             if (!promoCode) {
@@ -2248,7 +2485,7 @@
                 return;
             }
             
-            updateBalance(bonusAmount);
+            updateBalance(bonusAmount, 'promo', true);
             activatedPromoCodes.push(promoCode);
             
             saveToStorage();
@@ -2275,6 +2512,11 @@
 
         // ==================== СТАТИСТИКА ====================
         function showStats() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
             document.querySelectorAll('.game-window').forEach(el => {
                 el.style.display = 'none';
             });
@@ -2335,8 +2577,24 @@
                 activatedPromoCodes = data.activatedPromoCodes || [];
                 
                 updateActivatedPromos();
+                updateBalanceDisplay();
             }
         }
+
+        // ==================== АВТОМАТИЧЕСКАЯ СИНХРОНИЗАЦИЯ ====================
+        // Синхронизация баланса каждые 30 секунд
+        setInterval(() => {
+            if (userId && userId !== 0 && sessionToken && sessionToken !== 'demo') {
+                loadBalanceFromServer();
+            }
+        }, 30000);
+
+        // Синхронизация при возвращении на вкладку
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && userId && userId !== 0 && sessionToken && sessionToken !== 'demo') {
+                loadBalanceFromServer();
+            }
+        });
     </script>
 </body>
 </html>
