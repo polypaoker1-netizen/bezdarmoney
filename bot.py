@@ -12,7 +12,6 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiohttp import web
-import aiohttp_cors
 import hashlib
 
 # Настройка логирования
