@@ -3,6 +3,7 @@ import logging
 import sqlite3
 import json
 import os
+import hashlib
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -13,7 +14,6 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiohttp import web
-import hashlib
 
 # Настройка логирования
 logging.basicConfig(
@@ -53,6 +53,9 @@ class AdminStates(StatesGroup):
     promo_amount = State()
     promo_uses = State()
     promo_expires = State()
+
+class UserStates(StatesGroup):
+    activate_promo = State()
 
 # ========== БАЗА ДАННЫХ ==========
 def init_db():
@@ -295,11 +298,17 @@ def add_withdrawal(user_id, amount, username):
 def create_api_session(user_id):
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
+    
+    # Удаляем старые сессии пользователя
     cursor.execute('DELETE FROM api_sessions WHERE user_id = ?', (user_id,))
+    
+    # Создаем новую сессию
     session_token = hashlib.sha256(f"{user_id}{datetime.now()}{API_SECRET}".encode()).hexdigest()
     expires_at = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    
     cursor.execute('INSERT INTO api_sessions (user_id, session_token, expires_at) VALUES (?, ?, ?)',
                   (user_id, session_token, expires_at))
+    
     conn.commit()
     conn.close()
     return session_token
@@ -308,6 +317,14 @@ def verify_api_session(session_token):
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
     cursor.execute('SELECT user_id FROM api_sessions WHERE session_token = ? AND datetime(expires_at) > datetime("now")', (session_token,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
+
+def get_session_by_user(user_id):
+    conn = sqlite3.connect('bezdar_casino.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT session_token FROM api_sessions WHERE user_id = ? AND datetime(expires_at) > datetime("now")', (user_id,))
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else None
@@ -325,6 +342,13 @@ async def cmd_start(message: Message):
     conn.close()
     
     balance = get_balance(user_id)
+    # Создаем сессию для сайта
+    session_token = get_session_by_user(user_id)
+    if not session_token:
+        session_token = create_api_session(user_id)
+    
+    # Генерируем ссылку на сайт с параметрами
+    website_url_with_params = f"{WEBSITE_URL}?user_id={user_id}&session_token={session_token}"
     
     welcome_text = f"""
 🎮 <b>Добро пожаловать в BezdarMoney Casino!</b>
@@ -336,13 +360,12 @@ async def cmd_start(message: Message):
 • Вывод: от {MIN_WITHDRAWAL} ⭐
 
 ✨ <b>Пополняйте баланс через Telegram Stars!</b>
-🎮 <b>Играйте на сайте:</b> {WEBSITE_URL}
     """
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="deposit_menu")],
         [InlineKeyboardButton(text="💸 Вывести средства", callback_data="withdraw")],
-        [InlineKeyboardButton(text="🎮 Играть на сайте", url=WEBSITE_URL)],
+        [InlineKeyboardButton(text="🎮 Играть на сайте", url=website_url_with_params)],
         [InlineKeyboardButton(text="📞 Поддержка", url=f"https://t.me/{SUPPORT_USERNAME}")],
         [InlineKeyboardButton(text="🎁 Активировать промокод", callback_data="activate_promo")]
     ])
@@ -351,10 +374,11 @@ async def cmd_start(message: Message):
 
 @dp.callback_query(F.data == "activate_promo")
 async def activate_promo_callback(callback: types.CallbackQuery):
-    await callback.message.answer("Введите промокод:")
-    await AdminStates.create_promo.set()  # Используем то же состояние для простоты
+    await callback.message.answer("✏️ <b>Введите промокод:</b>")
+    await UserStates.activate_promo.set()
+    await callback.answer()
 
-@dp.message(AdminStates.create_promo)
+@dp.message(UserStates.activate_promo)
 async def process_promo(message: Message, state: FSMContext):
     promo_code = message.text.strip().upper()
     user_id = message.from_user.id
@@ -363,11 +387,60 @@ async def process_promo(message: Message, state: FSMContext):
     
     if result:
         new_balance = get_balance(user_id)
-        await message.answer(f"✅ Промокод активирован!\n\n💰 Начислено: {result} ⭐\n🏦 Новый баланс: {new_balance} ⭐")
+        await message.answer(
+            f"✅ <b>Промокод активирован!</b>\n\n"
+            f"💰 Начислено: {result} ⭐\n"
+            f"🏦 Новый баланс: {new_balance} ⭐"
+        )
     else:
-        await message.answer("❌ Промокод недействителен или уже использован!")
+        await message.answer("❌ <b>Промокод недействителен или уже использован!</b>")
     
     await state.clear()
+
+# ========== КОМАНДА /play (для быстрого перехода на сайт) ==========
+@dp.message(Command("play"))
+async def cmd_play(message: Message):
+    user_id = message.from_user.id
+    session_token = get_session_by_user(user_id)
+    
+    if not session_token:
+        session_token = create_api_session(user_id)
+    
+    website_url_with_params = f"{WEBSITE_URL}?user_id={user_id}&session_token={session_token}"
+    
+    play_text = f"""
+🎮 <b>Играть на сайте BezdarMoney Casino</b>
+
+Нажмите кнопку ниже, чтобы перейти на сайт и начать играть!
+
+Ваш баланс будет автоматически синхронизирован.
+    """
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎮 Начать игру", url=website_url_with_params)]
+    ])
+    
+    await message.answer(play_text, reply_markup=keyboard)
+
+# ========== КОМАНДА /balance ==========
+@dp.message(Command("balance"))
+async def cmd_balance(message: Message):
+    user_id = message.from_user.id
+    balance = get_balance(user_id)
+    
+    balance_text = f"""
+💰 <b>Ваш баланс:</b> {balance} ⭐
+
+💳 <b>Минимальные суммы:</b>
+• Пополнение: от {MIN_DEPOSIT} ⭐
+• Вывод: от {MIN_WITHDRAWAL} ⭐
+
+🎮 <b>Для игры:</b>
+• Нажмите /play для перехода на сайт
+• Или нажмите "Играть на сайте" в меню /start
+    """
+    
+    await message.answer(balance_text)
 
 # ========== АДМИН КОМАНДА /admin ==========
 @dp.message(Command("admin"))
@@ -755,10 +828,7 @@ async def admin_back(callback: types.CallbackQuery):
     await cmd_admin(callback.message)
     await callback.answer()
 
-# ========== ОСТАВШИЙСЯ КОД (не менять) ==========
-# Здесь идет весь ваш существующий код с пополнениями, выводом, API и т.д.
-# Я добавил только недостающие функции для админ-панели
-
+# ========== ПОПОЛНЕНИЕ БАЛАНСА ==========
 @dp.callback_query(F.data == "deposit_menu")
 async def deposit_menu(callback: types.CallbackQuery):
     menu_text = f"""
@@ -801,7 +871,7 @@ async def process_payment(callback: types.CallbackQuery):
     builder.button(text=f"Оплатить {amount} ⭐", pay=True)
     pay_keyboard = builder.as_markup()
     
-    prices = [LabeledPrice(label="XTR", amount=amount)]
+    prices = [LabeledPrice(label="Пополнение BezdarMoney Casino", amount=amount)]
     
     await callback.message.answer_invoice(
         title=f"Пополнение баланса в BezdarMoney Casino",
@@ -825,7 +895,10 @@ async def successful_payment(message: Message):
     
     new_balance = update_balance(user_id, amount, is_deposit=True)
     record_payment(user_id, amount, message.successful_payment.telegram_payment_charge_id)
+    
+    # Создаем новую сессию для сайта после пополнения
     session_token = create_api_session(user_id)
+    website_url_with_params = f"{WEBSITE_URL}?user_id={user_id}&session_token={session_token}"
     
     success_text = f"""
 ✅ <b>Оплата успешно принята!</b>
@@ -833,14 +906,15 @@ async def successful_payment(message: Message):
 💰 <b>Зачислено:</b> {amount} ⭐
 🏦 <b>Новый баланс:</b> {new_balance} ⭐
 
-🔗 <b>Для игры на сайте:</b>
-1. Перейдите по ссылке: {WEBSITE_URL}
-2. Баланс уже синхронизирован!
-
-🎮 <b>Удачной игры!</b>
+🎮 <b>Можете начинать играть!</b>
+Нажмите кнопку ниже для перехода на игровой сайт:
     """
     
-    await message.answer(success_text)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎮 Играть на сайте", url=website_url_with_params)]
+    ])
+    
+    await message.answer(success_text, reply_markup=keyboard)
     
     for admin_id in ADMIN_IDS:
         try:
@@ -856,6 +930,7 @@ async def successful_payment(message: Message):
         except:
             pass
 
+# ========== ВЫВОД СРЕДСТВ ==========
 @dp.callback_query(F.data == "withdraw")
 async def withdraw_callback(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -953,35 +1028,67 @@ async def withdraw_username_handler(message: Message, state: FSMContext):
         except:
             pass
 
-@dp.message(Command("paysupport"))
-async def pay_support_handler(message: Message):
-    support_text = """
-ℹ️ <b>Информация о платежах</b>
+# ========== КОМАНДА /help ==========
+@dp.message(Command("help"))
+async def cmd_help(message: Message):
+    help_text = """
+🎮 <b>BezdarMoney Casino - Помощь</b>
 
-🔹 <b>Пополнение баланса:</b>
-• Минимальная сумма: 20 ⭐
-• Оплата через Telegram Stars
-• Баланс зачисляется автоматически
+<b>Основные команды:</b>
+/start - Главное меню
+/play - Перейти на игровой сайт
+/balance - Проверить баланс
+/help - Эта справка
 
-🔹 <b>Вывод средств:</b>
-• Минимальная сумма: 300 ⭐
-• Обработка в течение 24 часов
-• Вывод на Telegram username
+<b>Пополнение баланса:</b>
+1. Нажмите "💰 Пополнить баланс"
+2. Выберите сумму
+3. Оплатите через Telegram Stars
+4. Баланс обновится автоматически
 
-🔹 <b>Техническая поддержка:</b>
+<b>Вывод средств:</b>
+1. Нажмите "💸 Вывести средства"
+2. Введите сумму (от 300⭐)
+3. Введите ваш Telegram username
+4. Администратор свяжется с вами
+
+<b>Игра на сайте:</b>
+1. Нажмите "🎮 Играть на сайте"
+2. Войдите с Telegram
+3. Ваш баланс синхронизируется
+4. Начните играть!
+
+<b>Техподдержка:</b>
 @{SUPPORT_USERNAME}
     """.format(SUPPORT_USERNAME=SUPPORT_USERNAME)
     
-    await message.answer(support_text)
+    await message.answer(help_text)
 
 # ========== API ДЛЯ САЙТА ==========
 async def api_get_balance(request):
     try:
+        # Разрешаем CORS
+        if request.method == 'OPTIONS':
+            response = web.Response()
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
+        
         data = await request.json()
         user_id = data.get('user_id')
         session_token = data.get('session_token')
         
-        if not session_token or verify_api_session(session_token) != user_id:
+        logger.info(f"API Balance request: user_id={user_id}, session_token={session_token}")
+        
+        if not user_id or not session_token:
+            return web.json_response({'error': 'Missing parameters'}, status=400)
+        
+        user_id = int(user_id)
+        verified_user_id = verify_api_session(session_token)
+        
+        if verified_user_id != user_id:
+            logger.warning(f"Invalid session for user {user_id}")
             return web.json_response({'error': 'Invalid session'}, status=401)
         
         balance = get_balance(user_id)
@@ -995,18 +1102,30 @@ async def api_get_balance(request):
         })
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response
+        
     except Exception as e:
         logger.error(f"API error: {e}")
-        return web.json_response({'error': str(e)}, status=500)
+        response = web.json_response({'error': str(e)}, status=500)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
 
 async def api_create_session(request):
     try:
+        # Разрешаем CORS
+        if request.method == 'OPTIONS':
+            response = web.Response()
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
+        
         data = await request.json()
         user_id = data.get('user_id')
         
         if not user_id:
             return web.json_response({'error': 'User ID required'}, status=400)
         
+        user_id = int(user_id)
         session_token = create_api_session(user_id)
         balance = get_balance(user_id)
         
@@ -1022,23 +1141,44 @@ async def api_create_session(request):
         return response
     except Exception as e:
         logger.error(f"API session error: {e}")
-        return web.json_response({'error': str(e)}, status=500)
+        response = web.json_response({'error': str(e)}, status=500)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
 
-async def webhook_update(request):
+async def api_webhook(request):
     try:
+        # Разрешаем CORS
+        if request.method == 'OPTIONS':
+            response = web.Response()
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
+        
         data = await request.json()
         secret = data.get('secret')
-        
-        if secret != API_SECRET:
-            return web.json_response({'error': 'Invalid secret'}, status=403)
-        
         user_id = data.get('user_id')
         amount = data.get('amount')
+        game_type = data.get('game_type', 'unknown')
+        win = data.get('win', True)
+        
+        logger.info(f"Webhook: user={user_id}, amount={amount}, game={game_type}, win={win}")
+        
+        if secret != API_SECRET:
+            logger.warning(f"Invalid secret from webhook")
+            return web.json_response({'error': 'Invalid secret'}, status=403)
         
         if not all([user_id, amount]):
             return web.json_response({'error': 'Missing parameters'}, status=400)
         
-        new_balance = update_balance(user_id, amount, is_deposit=True)
+        user_id = int(user_id)
+        amount = int(amount)
+        
+        # Если выигрыш - добавляем баланс, если проигрыш - вычитаем
+        if win:
+            new_balance = update_balance(user_id, abs(amount), is_deposit=True)
+        else:
+            new_balance = update_balance(user_id, abs(amount), is_deposit=False)
         
         response = web.json_response({
             'success': True,
@@ -1047,9 +1187,12 @@ async def webhook_update(request):
         })
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response
+        
     except Exception as e:
         logger.error(f"Webhook error: {e}")
-        return web.json_response({'error': str(e)}, status=500)
+        response = web.json_response({'error': str(e)}, status=500)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
 
 async def health_check(request):
     response = web.json_response({
@@ -1065,24 +1208,10 @@ async def health_check(request):
 # ========== НАСТРОЙКА ВЕБ-СЕРВЕРА ==========
 app = web.Application()
 
-@web.middleware
-async def cors_middleware(request, handler):
-    if request.method == 'OPTIONS':
-        response = web.Response()
-    else:
-        response = await handler(request)
-    
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    return response
-
-app.middlewares.append(cors_middleware)
-
 app.router.add_get('/health', health_check)
 app.router.add_post('/api/balance', api_get_balance)
 app.router.add_post('/api/session', api_create_session)
-app.router.add_post('/api/webhook', webhook_update)
+app.router.add_post('/api/webhook', api_webhook)
 
 # ========== ЗАПУСК ==========
 async def start_web_server():
@@ -1091,16 +1220,21 @@ async def start_web_server():
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
     logger.info(f"✅ Веб-сервер запущен на порту {PORT}")
+    logger.info(f"🌐 API доступно по адресу: http://0.0.0.0:{PORT}")
 
 async def main():
     logger.info("🚀 Запуск BezdarMoney Bot...")
     logger.info(f"📊 Минимальные суммы: пополнение={MIN_DEPOSIT}⭐, вывод={MIN_WITHDRAWAL}⭐")
+    logger.info(f"🌐 Сайт: {WEBSITE_URL}")
+    logger.info(f"👑 Админы: {ADMIN_IDS}")
     
+    # Запускаем веб-сервер в фоне
     web_task = asyncio.create_task(start_web_server())
     
     logger.info("🤖 Запуск Telegram бота...")
     await dp.start_polling(bot)
     
+    # Ожидаем завершения веб-сервера (хотя это никогда не произойдет)
     await web_task
 
 if __name__ == '__main__':
