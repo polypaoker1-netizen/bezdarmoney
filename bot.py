@@ -21,13 +21,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ========== КОНФИГУРАЦИЯ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ==========
+# ========== КОНФИГУРАЦИЯ ==========
 BOT_TOKEN = os.getenv('BOT_TOKEN', '7634324714:AAHnJR3SD0M47tPols4rirVsBpT3GJTQnZQ')
 ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_IDS', '8373042596,7804182255').split(',')]
 WEBSITE_URL = os.getenv('WEBSITE_URL', 'https://polypaoker1-netizen.github.io/bezdarmoney')
 SUPPORT_USERNAME = os.getenv('SUPPORT_USERNAME', 'TPBezdarCasino')
 API_SECRET = os.getenv('API_SECRET', 'bezdar_casino_secret_2024')
-PORT = int(os.getenv('PORT', '10000'))
+PORT = int(os.getenv('PORT', '8080'))
 
 # Инициализация бота
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
@@ -38,20 +38,16 @@ def init_db():
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
     
-    # Таблица пользователей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
             username TEXT,
             balance INTEGER DEFAULT 0,
             web_user_id TEXT,
-            is_banned BOOLEAN DEFAULT FALSE,
-            last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
-    # Таблица для API сессий
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS api_sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,7 +75,13 @@ def get_balance(user_id):
 def update_balance(user_id, amount):
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
+    
+    # Сначала создаем пользователя если его нет
+    cursor.execute('INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0)', (user_id,))
+    
+    # Обновляем баланс
     cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (amount, user_id))
+    
     conn.commit()
     conn.close()
     return get_balance(user_id)
@@ -109,7 +111,7 @@ def verify_api_session(session_token):
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT user_id, expires_at FROM api_sessions 
+        SELECT user_id FROM api_sessions 
         WHERE session_token = ? 
         AND datetime(expires_at) > datetime('now')
     ''', (session_token,))
@@ -150,14 +152,62 @@ async def cmd_start(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="deposit")],
         [InlineKeyboardButton(text="🎮 Играть на сайте", url=WEBSITE_URL)],
+        [InlineKeyboardButton(text="📊 Мой баланс", callback_data="balance")],
         [InlineKeyboardButton(text="📞 Поддержка", url=f"https://t.me/{SUPPORT_USERNAME}")]
     ])
     
     await message.answer(welcome_text, reply_markup=keyboard)
 
+@dp.callback_query(F.data == "balance")
+async def show_balance(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    balance = get_balance(user_id)
+    
+    await callback.message.answer(f"💰 <b>Ваш баланс:</b> {balance} ⭐")
+    await callback.answer()
+
+@dp.callback_query(F.data == "deposit")
+async def deposit_menu(callback: types.CallbackQuery):
+    text = """
+💰 <b>Пополнение баланса</b>
+
+Выберите сумму пополнения:
+• 100 ⭐ - 10 руб
+• 500 ⭐ - 45 руб  
+• 1000 ⭐ - 85 руб
+• 5000 ⭐ - 400 руб
+
+💎 <b>Как пополнить:</b>
+1. Напишите @{SUPPORT_USERNAME}
+2. Укажите сумму пополнения
+3. Оплатите удобным способом
+4. Получите звёзды на баланс!
+    """.format(SUPPORT_USERNAME=SUPPORT_USERNAME)
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="back")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard)
+    await callback.answer()
+
+@dp.callback_query(F.data == "back")
+async def back_to_main(callback: types.CallbackQuery):
+    await cmd_start(callback.message)
+    await callback.answer()
+
 # ========== API МАРШРУТЫ ==========
 async def api_get_balance(request):
     try:
+        # Простой CORS заголовок
+        if request.method == 'OPTIONS':
+            return web.Response(status=200, headers={
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            })
+        
         data = await request.json()
         user_id = data.get('user_id')
         session_token = data.get('session_token')
@@ -167,17 +217,28 @@ async def api_get_balance(request):
         
         balance = get_balance(user_id)
         
-        return web.json_response({
+        response = web.json_response({
             'success': True,
             'balance': balance,
             'user_id': user_id
         })
+        
+        # Добавляем CORS заголовки
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
     except Exception as e:
         logger.error(f"API error: {e}")
         return web.json_response({'error': str(e)}, status=500)
 
 async def api_create_session(request):
     try:
+        if request.method == 'OPTIONS':
+            return web.Response(status=200, headers={
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            })
+        
         data = await request.json()
         user_id = data.get('user_id')
         
@@ -187,18 +248,28 @@ async def api_create_session(request):
         session_token = create_api_session(user_id)
         balance = get_balance(user_id)
         
-        return web.json_response({
+        response = web.json_response({
             'success': True,
             'session_token': session_token,
             'user_id': user_id,
             'balance': balance
         })
+        
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
     except Exception as e:
         logger.error(f"API session error: {e}")
         return web.json_response({'error': str(e)}, status=500)
 
 async def webhook_update(request):
     try:
+        if request.method == 'OPTIONS':
+            return web.Response(status=200, headers={
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            })
+        
         data = await request.json()
         secret = data.get('secret')
         
@@ -213,30 +284,44 @@ async def webhook_update(request):
         
         new_balance = update_balance(user_id, amount)
         
-        return web.json_response({
+        response = web.json_response({
             'success': True,
             'new_balance': new_balance,
             'user_id': user_id
         })
+        
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
     except Exception as e:
         logger.error(f"Webhook error: {e}")
         return web.json_response({'error': str(e)}, status=500)
 
 async def health_check(request):
-    return web.json_response({'status': 'ok', 'service': 'bezdar-money-bot'})
+    response = web.json_response({
+        'status': 'ok', 
+        'service': 'bezdar-money-bot',
+        'timestamp': datetime.now().isoformat()
+    })
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
 
 # ========== НАСТРОЙКА ВЕБ-СЕРВЕРА ==========
 app = web.Application()
 
-# Настраиваем CORS
-cors = aiohttp_cors.setup(app, defaults={
-    "*": aiohttp_cors.ResourceOptions(
-        allow_credentials=True,
-        expose_headers="*",
-        allow_headers="*",
-        allow_methods="*"
-    )
-})
+# Добавляем CORS middleware
+@web.middleware
+async def cors_middleware(request, handler):
+    if request.method == 'OPTIONS':
+        response = web.Response()
+    else:
+        response = await handler(request)
+    
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
+
+app.middlewares.append(cors_middleware)
 
 # Добавляем маршруты
 app.router.add_get('/health', health_check)
@@ -244,25 +329,29 @@ app.router.add_post('/api/balance', api_get_balance)
 app.router.add_post('/api/session', api_create_session)
 app.router.add_post('/api/webhook', webhook_update)
 
-# Настраиваем CORS для всех маршрутов
-for route in list(app.router.routes()):
-    cors.add(route)
-
 # ========== ЗАПУСК ==========
-async def start_bot():
-    logger.info(f"🚀 Запуск BezdarMoney Bot на порту {PORT}")
-    
-    # Запускаем веб-сервер
+async def start_web_server():
+    """Запуск веб-сервера для API"""
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
+    logger.info(f"✅ Веб-сервер запущен на порту {PORT}")
+    logger.info(f"🌐 API доступен по URL: http://0.0.0.0:{PORT}")
+
+async def main():
+    """Главная функция запуска"""
+    logger.info("🚀 Запуск BezdarMoney Bot...")
     
-    logger.info(f"✅ Веб-сервер запущен")
-    logger.info(f"🌐 API готов к работе")
+    # Запускаем веб-сервер в фоне
+    web_task = asyncio.create_task(start_web_server())
     
     # Запускаем бота
+    logger.info("🤖 Запуск Telegram бота...")
     await dp.start_polling(bot)
+    
+    # Ждем завершения (никогда не произойдет)
+    await web_task
 
 if __name__ == '__main__':
-    asyncio.run(start_bot())
+    asyncio.run(main())
