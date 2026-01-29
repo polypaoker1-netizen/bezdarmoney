@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: bezdar-money-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        value: "8373042596,7804182255"
+      - key: WEBSITE_URL
+        value: "https://polypaoker1-netizen.github.io/bezdarmoney"
+      - key: SUPPORT_USERNAME
+        value: "TPBezdarCasino"
+      - key: API_SECRET
+        generateValue: true
+      - key: PORT
+        value: "10000"
