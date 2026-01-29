@@ -4,24 +4,663 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>💰 BezdarMoney Casino</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="script.js">
     <style>
-        /* Модальное окно входа */
-        #loginModal {
+        /* Космические стили BezdarMoney */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a2a, #1a0033);
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Анимация звёзд */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes moveStars {
+            from { transform: translateY(0); }
+            to { transform: translateY(-1000px); }
+        }
+
+        #stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 200%;
+            pointer-events: none;
+            z-index: -1;
+            background: transparent;
+            animation: moveStars 100s linear infinite;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        /* Контейнер */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Шапка BezdarMoney */
+        .header {
+            background: linear-gradient(90deg, #8a2be2, #4b0082);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .balance {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 20px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            border: 2px solid #8a2be2;
+        }
+
+        /* Игры */
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .game-card {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.3));
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px) scale(1.05);
+            border-color: #ffd700;
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.4);
+        }
+
+        .game-card.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+        }
+
+        .game-icon {
+            font-size: 56px;
+            margin-bottom: 15px;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            25% { transform: translateY(-10px) rotate(5deg); }
+            75% { transform: translateY(-10px) rotate(-5deg); }
+        }
+
+        /* Игровые окна */
+        .game-window {
+            display: none;
+            background: rgba(20, 0, 40, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 20px;
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-window::before {
+            content: 'BEZDARMONEY';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 80px;
+            font-weight: bold;
+            color: rgba(255, 215, 0, 0.1);
+            z-index: 0;
+            white-space: nowrap;
+        }
+
+        .game-window > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .active-window {
+            display: block;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(50px) scale(0.9); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+
+        /* CRASH игра */
+        .crash-container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .crash-plane-container {
+            height: 300px;
+            position: relative;
+            margin: 30px 0;
+            background: linear-gradient(to top, #000033, #000011);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #4a4aff;
+        }
+
+        #crash-plane {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 50px;
+            background: linear-gradient(45deg, #3498db, #1e90ff);
+            border-radius: 10px 10px 0 0;
+            transition: bottom 0.1s linear;
+            z-index: 10;
+        }
+
+        #crash-plane::before {
+            content: '✈️';
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 30px;
+        }
+
+        #crash-plane::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 20px;
+            background: linear-gradient(45deg, #3498db, #1e90ff);
+            border-radius: 10px;
+        }
+
+        .crash-multiplier {
+            font-size: 56px;
+            font-weight: bold;
+            color: #00ff00;
+            text-shadow: 0 0 30px #00ff00;
+            margin: 20px 0;
+            animation: pulse 1s infinite;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            border: 2px solid #00ff00;
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                transform: scale(1);
+                text-shadow: 0 0 30px #00ff00;
+            }
+            50% { 
+                transform: scale(1.05);
+                text-shadow: 0 0 50px #00ff00;
+            }
+        }
+
+        /* MINES игра */
+        .mines-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            max-width: 400px;
+            margin: 30px auto;
+        }
+
+        .mine-cell {
+            aspect-ratio: 1;
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid #8a2be2;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mine-cell::before {
+            content: '💰';
+            position: absolute;
+            opacity: 0.1;
+            font-size: 20px;
+        }
+
+        .mine-cell:hover {
+            transform: scale(1.05);
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .mine-cell.revealed {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            border-color: #00ff00;
+        }
+
+        .mine-cell.mine {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            animation: explode 0.5s;
+            border-color: #ff0000;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* РУЛЕТКА */
+        .roulette-container {
+            text-align: center;
+        }
+
+        .roulette-wheel {
+            width: 300px;
+            height: 300px;
+            margin: 30px auto;
+            position: relative;
+            border-radius: 50%;
+            background: conic-gradient(
+                #27ae60 0deg 10deg,
+                #e74c3c 10deg 190deg,
+                #2c3e50 190deg 370deg,
+                #27ae60 370deg 360deg
+            );
+            animation: spin 3s linear infinite;
+            border: 5px solid #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .roulette-ball {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px #fff;
+            animation: ballOrbit 2s linear infinite;
+        }
+
+        @keyframes ballOrbit {
+            from { transform: translate(-50%, -50%) rotate(0deg) translateX(140px); }
+            to { transform: translate(-50%, -50%) rotate(360deg) translateX(140px); }
+        }
+
+        /* СЛОТЫ */
+        .slots-container {
+            text-align: center;
+        }
+
+        .slots-machine {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 40px 0;
+            perspective: 1000px;
+        }
+
+        .slot-reel {
+            width: 80px;
+            height: 240px;
+            background: linear-gradient(45deg, #8a2be2, #4b0082);
+            border-radius: 10px;
+            border: 3px solid #ffd700;
+            overflow: hidden;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+
+        .slot-items {
+            position: absolute;
+            width: 100%;
+            animation: slotSpin 0.1s linear infinite;
+        }
+
+        @keyframes slotSpin {
+            from { transform: translateY(-240px); }
+            to { transform: translateY(240px); }
+        }
+
+        .slot-item {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        /* DICE игра */
+        .dice-container {
+            text-align: center;
+        }
+
+        .dice-result {
+            font-size: 100px;
+            margin: 30px 0;
+            animation: diceRoll 2s;
+        }
+
+        @keyframes diceRoll {
+            0% { transform: rotate(0deg) scale(0); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        .guess-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .guess-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            background: linear-gradient(45deg, #3498db, #1e90ff);
+            border: 2px solid #ffd700;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .guess-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Кнопки */
+        .btn {
+            background: linear-gradient(45deg, #8a2be2, #4b0082);
+            color: #ffd700;
+            border: 2px solid #ffd700;
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(138, 43, 226, 0.4);
+            color: #fff;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+        }
+
+        /* Панель управления */
+        .bet-controls {
+            background: rgba(138, 43, 226, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            border: 2px solid #ffd700;
+        }
+
+        .bet-input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 15px 25px;
+            color: #ffd700;
+            font-size: 20px;
+            font-weight: bold;
+            width: 200px;
+            text-align: center;
+            outline: none;
+        }
+
+        .bet-input:focus {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .quick-bet {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid #8a2be2;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .chip:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Анимации */
+        .win-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            color: #00ff00;
+            text-shadow: 0 0 50px #00ff00;
+            animation: winPopup 1.5s;
+            z-index: 1000;
+            pointer-events: none;
+            background: rgba(0,0,0,0.8);
+            padding: 30px 60px;
+            border-radius: 20px;
+            border: 3px solid #00ff00;
+        }
+
+        @keyframes winPopup {
+            0% { 
+                transform: translate(-50%, -50%) scale(0) rotate(-180deg); 
+                opacity: 0; 
+            }
+            30% { 
+                transform: translate(-50%, -50%) scale(1.2) rotate(0); 
+                opacity: 1; 
+            }
+            70% { 
+                transform: translate(-50%, -50%) scale(1) rotate(0); 
+                opacity: 1; 
+            }
+            100% { 
+                transform: translate(-50%, -50%) scale(1) rotate(0); 
+                opacity: 1; 
+            }
+        }
+
+        .lose-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            color: #ff0000;
+            text-shadow: 0 0 50px #ff0000;
+            animation: losePopup 1.5s;
+            z-index: 1000;
+            pointer-events: none;
+            background: rgba(0,0,0,0.8);
+            padding: 30px 60px;
+            border-radius: 20px;
+            border: 3px solid #ff0000;
+        }
+
+        @keyframes losePopup {
+            0% { 
+                transform: translate(-50%, -50%) scale(0); 
+                opacity: 0; 
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.3); 
+                opacity: 1; 
+            }
+            100% { 
+                transform: translate(-50%, -50%) scale(1); 
+                opacity: 1; 
+            }
+        }
+
+        /* Модальные окна */
+        .modal {
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            display: flex;
-            justify-content: center;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
             align-items: center;
-            z-index: 10000;
+            justify-content: center;
         }
-        
-        .login-modal-content {
+
+        .modal-content {
             background: linear-gradient(135deg, #1a0033, #0a0a2a);
             padding: 40px;
             border-radius: 20px;
@@ -32,65 +671,219 @@
             text-align: center;
             position: relative;
         }
-        
-        .login-btn {
-            background: linear-gradient(45deg, #0088cc, #00aaff);
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: #e74c3c;
             color: white;
-            border: 2px solid #ffd700;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 18px;
-            font-weight: bold;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 20px;
             cursor: pointer;
-            margin: 10px;
+            line-height: 30px;
+        }
+
+        /* Таблицы */
+        .stats-table {
             width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: rgba(138, 43, 226, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #ffd700;
+        }
+
+        .stats-table th {
+            background: linear-gradient(45deg, #8a2be2, #4b0082);
+            padding: 15px;
+            text-align: left;
+            color: #ffd700;
+        }
+
+        .stats-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .stats-table tr:hover {
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .games-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .mines-grid {
+                grid-template-columns: repeat(5, 1fr);
+                max-width: 100%;
+            }
+            
+            .mine-cell {
+                font-size: 18px;
+            }
+            
+            .bet-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .bet-input {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .roulette-wheel {
+                width: 250px;
+                height: 250px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .game-icon {
+                font-size: 48px;
+            }
+            
+            .crash-multiplier {
+                font-size: 42px;
+            }
+            
+            .btn {
+                padding: 12px 25px;
+                font-size: 16px;
+            }
+        }
+
+        /* Нотификации */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: linear-gradient(45deg, #8a2be2, #4b0082);
+            color: #ffd700;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            z-index: 1500;
+            animation: slideInRight 0.3s, fadeOut 0.3s 2.7s;
+            max-width: 300px;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        /* Прогресс бар */
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #ffd700);
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        /* Загрузка */
+        .loader {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .loader-content {
+            text-align: center;
+            background: linear-gradient(135deg, #1a0033, #0a0a2a);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: #ffd700;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        /* Бонусы */
+        .bonus-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .bonus-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(138, 43, 226, 0.2));
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #ffd700;
             transition: all 0.3s;
         }
         
-        .login-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(0, 136, 204, 0.5);
+        .bonus-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .promo-input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 15px;
+            color: #ffd700;
+            font-size: 18px;
+            width: 100%;
+            margin: 10px 0;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <!-- Модальное окно входа -->
-    <div id="loginModal">
-        <div class="login-modal-content">
-            <h2 style="color: #ffd700; margin-bottom: 20px;">🔐 ВХОД В BEZDARMONEY</h2>
-            <div style="margin: 20px 0;">
-                <p style="color: #ffd700; margin-bottom: 20px;">
-                    Для игры необходимо авторизоваться через Telegram бота
-                </p>
-                <div style="background: rgba(0,255,0,0.1); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #00ff00;">
-                    <h3 style="color: #00ff00;">📱 Как войти:</h3>
-                    <ol style="color: #ffd700; text-align: left; margin: 15px 0; padding-left: 20px;">
-                        <li>Перейдите в нашего бота: <strong>@BezdarMoneyBot</strong></li>
-                        <li>Нажмите кнопку "🎮 Играть на сайте"</li>
-                        <li>Вы будете автоматически перенаправлены на сайт</li>
-                        <li>Ваш баланс синхронизируется</li>
-                    </ol>
-                </div>
-                <button class="login-btn" onclick="goToTelegramBot()">
-                    📱 ПЕРЕЙТИ В БОТА ДЛЯ ВХОДА
-                </button>
-                <button class="login-btn" onclick="enterDemoMode()" style="background: linear-gradient(45deg, #27ae60, #2ecc71);">
-                    🎮 ДЕМО-РЕЖИМ (без реальных денег)
-                </button>
-                
-                <!-- Форма для ручного ввода данных (для тестирования) -->
-                <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 10px;">
-                    <h4 style="color: #ff9999;">🔧 Тестовый вход (если бот не работает)</h4>
-                    <input type="text" id="testUserId" placeholder="Ваш Telegram ID" style="width: 100%; padding: 10px; margin: 10px 0; background: rgba(0,0,0,0.5); border: 1px solid #ffd700; color: white; border-radius: 5px;">
-                    <input type="text" id="testUsername" placeholder="@username" style="width: 100%; padding: 10px; margin: 10px 0; background: rgba(0,0,0,0.5); border: 1px solid #ffd700; color: white; border-radius: 5px;">
-                    <button onclick="manualLogin()" style="width: 100%; padding: 12px; background: linear-gradient(45deg, #8a2be2, #4b0082); color: white; border: 1px solid #ffd700; border-radius: 5px; cursor: pointer;">
-                        Войти вручную
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Загрузка -->
     <div id="loader" class="loader">
         <div class="loader-content">
@@ -123,7 +916,6 @@
                     <button class="btn btn-warning" onclick="showModal('withdrawModal')">Вывести</button>
                     <button class="btn" onclick="showModal('bonusModal')">Бонусы</button>
                     <button class="btn" onclick="showStats()">Статистика</button>
-                    <button class="btn btn-danger" onclick="logout()">Выйти</button>
                 </div>
             </div>
         </div>
@@ -570,6 +1362,1292 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+        let userBalance = 0;
+        let userId = null;
+        let sessionToken = null;
+        let gameHistory = {
+            crash: { games: 0, wins: 0, losses: 0, profit: 0 },
+            mines: { games: 0, wins: 0, losses: 0, profit: 0 },
+            roulette: { games: 0, wins: 0, losses: 0, profit: 0 },
+            slots: { games: 0, wins: 0, losses: 0, profit: 0 },
+            dice: { games: 0, wins: 0, losses: 0, profit: 0 }
+        };
+        
+        let activatedPromoCodes = [];
+        
+        // CRASH переменные
+        let crashInterval;
+        let crashMultiplier = 1.0;
+        let crashBetAmount = 0;
+        let crashActive = false;
+        let crashExplodePoint = 0;
+        let crashCashedOut = false;
+        
+        // MINES переменные
+        let minesBetAmount = 0;
+        let minesStep = 0;
+        let minesGrid = [];
+        let minesGameActive = false;
+        let minesCashoutAmount = 0;
+        
+        // РУЛЕТКА переменные
+        let rouletteBetAmount = 0;
+        let rouletteBetColor = '';
+        let rouletteSpinning = false;
+        
+        // СЛОТЫ переменные
+        let slotsBetAmount = 0;
+        let slotsAutoSpinCount = 0;
+        let slotsSpinning = false;
+        
+        // DICE переменные
+        let diceBetAmount = 0;
+        let diceRolling = false;
+
+        // API конфигурация
+        // ЗАМЕНИТЕ ЭТОТ URL на реальный URL вашего бота на хостинге
+        const API_URL = 'https://ваш-домен.com'; 
+        // Для локального тестирования используйте: const API_URL = 'http://localhost:8080';
+
+        // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('loader').style.display = 'none';
+            createStars();
+            initLoginSystem();
+            
+            const diceSlider = document.getElementById('dice-guess');
+            const guessValue = document.getElementById('guess-value');
+            
+            diceSlider.addEventListener('input', function() {
+                guessValue.textContent = this.value;
+            });
+            
+            setTimeout(() => {
+                showNotification('💰 Добро пожаловать в BezdarMoney Casino!', 'info');
+            }, 1000);
+        });
+
+        // ==================== СИСТЕМА АВТОРИЗАЦИИ ====================
+        function initLoginSystem() {
+            // Проверяем параметры URL (для входа через Telegram бота)
+            const urlParams = new URLSearchParams(window.location.search);
+            const tgUserId = urlParams.get('user_id');
+            const tgSession = urlParams.get('session');
+            
+            if (tgUserId && tgSession) {
+                // Сохраняем данные сессии
+                localStorage.setItem('tg_user_id', tgUserId);
+                localStorage.setItem('tg_session', tgSession);
+                
+                // Загружаем баланс с сервера
+                userId = parseInt(tgUserId);
+                sessionToken = tgSession;
+                loadBalanceFromServer();
+            } else {
+                // Пробуем загрузить из localStorage
+                const savedUserId = localStorage.getItem('tg_user_id');
+                const savedSession = localStorage.getItem('tg_session');
+                
+                if (savedUserId && savedSession) {
+                    userId = parseInt(savedUserId);
+                    sessionToken = savedSession;
+                    loadBalanceFromServer();
+                } else {
+                    // Показываем окно входа
+                    showLoginModal();
+                }
+            }
+            
+            // Загружаем локальные данные
+            loadFromStorage();
+            updateStatsDisplay();
+        }
+
+        function showLoginModal() {
+            const modalHTML = `
+                <div id="loginModal" class="modal" style="display: flex;">
+                    <div class="modal-content">
+                        <h2 style="color: #ffd700; margin-bottom: 20px;">🔐 ВХОД В BEZDARMONEY</h2>
+                        <div style="margin: 20px 0;">
+                            <p style="color: #ffd700; margin-bottom: 20px;">
+                                Для игры необходимо авторизоваться через Telegram бота
+                            </p>
+                            <div style="background: rgba(0,255,0,0.1); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #00ff00;">
+                                <h3 style="color: #00ff00;">📱 Как войти:</h3>
+                                <ol style="color: #ffd700; text-align: left; margin: 15px 0; padding-left: 20px;">
+                                    <li>Перейдите в нашего бота: <strong>@BezdarMoneyBot</strong></li>
+                                    <li>Нажмите кнопку "🎮 Играть на сайте"</li>
+                                    <li>Вы будете автоматически перенаправлены на сайт</li>
+                                    <li>Ваш баланс синхронизируется</li>
+                                </ol>
+                            </div>
+                            <button class="btn btn-success" onclick="goToBot()" style="margin-top: 20px; width: 100%;">
+                                ПЕРЕЙТИ В БОТА ДЛЯ ВХОДА
+                            </button>
+                            <button class="btn btn-warning" onclick="demoMode()" style="margin-top: 10px; width: 100%;">
+                                🎮 ДЕМО-РЕЖИМ (без реальных денег)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = modalHTML;
+            document.body.appendChild(modalContainer);
+        }
+
+        function goToBot() {
+            window.open('https://t.me/BezdarMoneyBot', '_blank');
+        }
+
+        function demoMode() {
+            // Скрываем модальное окно
+            const modal = document.getElementById('loginModal');
+            if (modal) modal.remove();
+            
+            // Устанавливаем демо-режим
+            userId = 0;
+            sessionToken = 'demo';
+            userBalance = 10000; // Начальный баланс в демо-режиме
+            
+            updateBalanceDisplay();
+            showNotification('🎮 Включен демо-режим! Играйте бесплатно!', 'success');
+        }
+
+        async function loadBalanceFromServer() {
+            try {
+                const response = await fetch(`${API_URL}/api/balance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        session_token: sessionToken
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    userBalance = data.balance;
+                    updateBalanceDisplay();
+                    showNotification(`💰 Баланс синхронизирован: ${userBalance}⭐`, 'success');
+                } else {
+                    showNotification('❌ Ошибка синхронизации баланса', 'error');
+                    // Пробуем создать новую сессию
+                    await createNewSession();
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки баланса:', error);
+                showNotification('⚠️ Не удалось загрузить баланс. Используется локальная версия', 'warning');
+                loadFromStorage();
+            }
+        }
+
+        async function createNewSession() {
+            try {
+                const response = await fetch(`${API_URL}/api/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    sessionToken = data.session_token;
+                    localStorage.setItem('tg_session', sessionToken);
+                    userBalance = data.balance;
+                    updateBalanceDisplay();
+                    showNotification('✅ Сессия восстановлена!', 'success');
+                }
+            } catch (error) {
+                console.error('Ошибка создания сессии:', error);
+            }
+        }
+
+        async function updateBalanceOnServer(amount, gameType, win = true) {
+            if (userId === 0 || sessionToken === 'demo') {
+                // В демо-режиме не отправляем на сервер
+                return userBalance;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/webhook`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        secret: 'bezdar_casino_secret_2024',
+                        user_id: userId,
+                        amount: amount,
+                        game_type: gameType,
+                        win: win
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    userBalance = data.new_balance;
+                    updateBalanceDisplay();
+                    return userBalance;
+                }
+            } catch (error) {
+                console.error('Ошибка обновления баланса:', error);
+            }
+            
+            return userBalance;
+        }
+
+        // ==================== ФУНКЦИИ ОБЩИЕ ====================
+        function createStars() {
+            const stars = document.getElementById('stars');
+            stars.innerHTML = '';
+            for (let i = 0; i < 200; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.width = Math.random() * 4 + 'px';
+                star.style.height = star.style.width;
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.opacity = Math.random() * 0.7 + 0.3;
+                star.style.animationDelay = Math.random() * 5 + 's';
+                star.style.animationDuration = Math.random() * 3 + 2 + 's';
+                stars.appendChild(star);
+            }
+        }
+
+        function updateBalanceDisplay() {
+            document.getElementById('balance').textContent = userBalance;
+            document.getElementById('modal-balance').textContent = userBalance;
+            document.getElementById('withdraw-balance').textContent = userBalance;
+        }
+
+        function updateBalance(amount, gameType = 'other', win = true) {
+            const oldBalance = userBalance;
+            userBalance += amount;
+            updateBalanceDisplay();
+            
+            // Сохраняем локально
+            saveToStorage();
+            
+            // Обновляем на сервере (если не демо-режим)
+            if (userId !== 0 && sessionToken !== 'demo' && amount !== 0) {
+                updateBalanceOnServer(Math.abs(amount), gameType, win);
+            }
+            
+            return userBalance;
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerHTML = '💰 BezdarMoney: ' + message;
+            
+            if (type === 'error') {
+                notification.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
+            } else if (type === 'success') {
+                notification.style.background = 'linear-gradient(45deg, #27ae60, #2ecc71)';
+            } else if (type === 'warning') {
+                notification.style.background = 'linear-gradient(45deg, #f39c12, #e67e22)';
+            }
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function showWinAnimation(text) {
+            const anim = document.createElement('div');
+            anim.className = 'win-animation';
+            anim.textContent = text;
+            document.body.appendChild(anim);
+            
+            setTimeout(() => anim.remove(), 1500);
+        }
+
+        function showLoseAnimation(text) {
+            const anim = document.createElement('div');
+            anim.className = 'lose-animation';
+            anim.textContent = text;
+            document.body.appendChild(anim);
+            
+            setTimeout(() => anim.remove(), 1500);
+        }
+
+        function showModal(modalId) {
+            if (userId === null && modalId !== 'bonusModal') {
+                showLoginModal();
+                return;
+            }
+            
+            document.getElementById(modalId).style.display = 'flex';
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // ==================== УПРАВЛЕНИЕ ИГРАМИ ====================
+        function startGame(game) {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
+            document.querySelectorAll('.game-window').forEach(el => {
+                el.style.display = 'none';
+            });
+            document.querySelector('.games-grid').style.display = 'none';
+            
+            document.querySelectorAll('.game-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelector(`.game-card[onclick*="${game}"]`).classList.add('active');
+            
+            document.getElementById(`${game}-game`).style.display = 'block';
+            
+            if (game === 'mines') {
+                resetMinesGrid();
+            } else if (game === 'slots') {
+                resetSlots();
+            }
+        }
+
+        function exitGame() {
+            document.querySelectorAll('.game-window').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            document.querySelector('.games-grid').style.display = 'grid';
+            
+            if (crashActive) {
+                clearInterval(crashInterval);
+                crashActive = false;
+                document.getElementById('cashout-btn').disabled = true;
+                document.getElementById('crash-start-btn').disabled = false;
+                crashCashedOut = false;
+            }
+            
+            if (minesGameActive) {
+                minesGameActive = false;
+                document.getElementById('mines-cashout-btn').disabled = true;
+                document.getElementById('mines-start-btn').disabled = false;
+            }
+            
+            rouletteSpinning = false;
+            slotsSpinning = false;
+            diceRolling = false;
+        }
+
+        // ==================== CRASH ИГРА ====================
+        function setBet(amount) {
+            document.getElementById('crash-bet').value = amount;
+        }
+
+        async function placeCrashBet() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
+            const betInput = document.getElementById('crash-bet');
+            const bet = parseInt(betInput.value);
+            
+            if (isNaN(bet) || bet < 10) {
+                showNotification('Минимальная ставка: 10⭐', 'error');
+                return;
+            }
+            
+            if (bet > userBalance) {
+                showNotification('Недостаточно средств', 'error');
+                return;
+            }
+            
+            if (crashActive) {
+                showNotification('Игра уже запущена', 'warning');
+                return;
+            }
+            
+            updateBalance(-bet, 'crash', false);
+            crashBetAmount = bet;
+            crashActive = true;
+            crashCashedOut = false;
+            
+            const plane = document.getElementById('crash-plane');
+            plane.style.bottom = '20px';
+            plane.style.background = 'linear-gradient(45deg, #3498db, #1e90ff)';
+            
+            // Генерация точки взрыва (от 1.2x до 3x в 70% случаев, до 10x в 30%)
+            const random = Math.random();
+            if (random < 0.7) {
+                crashExplodePoint = 1.2 + Math.random() * 1.8; // 70% до 3x
+            } else {
+                crashExplodePoint = 3.0 + Math.random() * 7.0; // 30% до 10x
+            }
+            
+            crashMultiplier = 1.0;
+            
+            document.getElementById('cashout-btn').disabled = false;
+            document.getElementById('crash-start-btn').disabled = true;
+            
+            crashInterval = setInterval(updateCrash, 100);
+            
+            showNotification('Самолёт взлетает! Забирайте деньги от 1.4x!', 'warning');
+        }
+
+        function updateCrash() {
+            if (!crashActive) return;
+            
+            crashMultiplier += 0.01;
+            
+            document.getElementById('crash-multiplier').textContent = crashMultiplier.toFixed(2) + 'x';
+            
+            const plane = document.getElementById('crash-plane');
+            const newBottom = 20 + (crashMultiplier - 1) * 25;
+            plane.style.bottom = newBottom + 'px';
+            
+            if (crashMultiplier >= crashExplodePoint) {
+                crashExplode();
+            }
+        }
+
+        async function cashOut() {
+            if (!crashActive || crashCashedOut) return;
+            
+            // Проверяем минимальный множитель 1.4x
+            if (crashMultiplier < 1.4) {
+                showNotification('Можно забрать только от 1.4x!', 'error');
+                return;
+            }
+            
+            crashActive = false;
+            crashCashedOut = true;
+            clearInterval(crashInterval);
+            
+            const winAmount = Math.floor(crashBetAmount * crashMultiplier);
+            updateBalance(winAmount, 'crash', true);
+            
+            showWinAnimation('+ ' + winAmount + ' ⭐');
+            showNotification('Поздравляем! Вы успели забрать деньги!', 'success');
+            
+            gameHistory.crash.games++;
+            gameHistory.crash.wins++;
+            gameHistory.crash.profit += (winAmount - crashBetAmount);
+            updateStatsDisplay();
+            saveToStorage();
+            
+            document.getElementById('cashout-btn').disabled = true;
+            document.getElementById('crash-start-btn').disabled = false;
+            
+            // Авто сброс через 3 секунды
+            setTimeout(() => {
+                const plane = document.getElementById('crash-plane');
+                plane.style.background = 'linear-gradient(45deg, #3498db, #1e90ff)';
+                plane.style.bottom = '20px';
+                document.getElementById('crash-multiplier').textContent = '1.00x';
+                crashCashedOut = false;
+            }, 3000);
+        }
+
+        function crashExplode() {
+            if (!crashActive) return;
+            
+            crashActive = false;
+            clearInterval(crashInterval);
+            
+            const plane = document.getElementById('crash-plane');
+            plane.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
+            
+            // Если не успели забрать - проигрыш
+            if (!crashCashedOut) {
+                showLoseAnimation('💥 ВЗРЫВ!');
+                showNotification('Самолёт взорвался! Вы проиграли ' + crashBetAmount + '⭐', 'error');
+                
+                gameHistory.crash.games++;
+                gameHistory.crash.losses++;
+                gameHistory.crash.profit -= crashBetAmount;
+                updateStatsDisplay();
+                saveToStorage();
+            }
+            
+            document.getElementById('cashout-btn').disabled = true;
+            document.getElementById('crash-start-btn').disabled = false;
+            
+            setTimeout(() => {
+                plane.style.background = 'linear-gradient(45deg, #3498db, #1e90ff)';
+                plane.style.bottom = '20px';
+                document.getElementById('crash-multiplier').textContent = '1.00x';
+                crashCashedOut = false;
+            }, 2000);
+        }
+
+        // ==================== MINES ИГРА ====================
+        function setMinesBet(amount) {
+            document.getElementById('mines-bet').value = amount;
+        }
+
+        function resetMinesGrid() {
+            const grid = document.getElementById('mines-grid');
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < 25; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'mine-cell';
+                cell.dataset.index = i;
+                cell.textContent = '?';
+                cell.onclick = () => revealMine(i);
+                grid.appendChild(cell);
+            }
+            
+            minesGrid = Array(25).fill().map(() => ({
+                isMine: false,
+                revealed: false
+            }));
+            
+            minesStep = 0;
+            document.getElementById('moves-count').textContent = '0';
+        }
+
+        async function startMinesGame() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
+            const betInput = document.getElementById('mines-bet');
+            const bet = parseInt(betInput.value);
+            
+            if (isNaN(bet) || bet < 10) {
+                showNotification('Минимальная ставка: 10⭐', 'error');
+                return;
+            }
+            
+            if (bet > userBalance) {
+                showNotification('Недостаточно средств', 'error');
+                return;
+            }
+            
+            if (minesGameActive) {
+                showNotification('Игра уже запущена', 'warning');
+                return;
+            }
+            
+            updateBalance(-bet, 'mines', false);
+            minesBetAmount = bet;
+            minesGameActive = true;
+            minesCashoutAmount = bet;
+            
+            resetMinesGrid();
+            
+            let minesPlaced = 0;
+            while (minesPlaced < 5) {
+                const index = Math.floor(Math.random() * 25);
+                if (!minesGrid[index].isMine) {
+                    minesGrid[index].isMine = true;
+                    minesPlaced++;
+                }
+            }
+            
+            document.getElementById('mines-cashout-btn').disabled = false;
+            document.getElementById('mines-start-btn').disabled = true;
+            
+            showNotification('Игра началась! Находите драгоценности 💎', 'success');
+        }
+
+        async function revealMine(index) {
+            if (!minesGameActive || minesGrid[index].revealed) return;
+            
+            minesStep++;
+            document.getElementById('moves-count').textContent = minesStep;
+            
+            const cell = document.querySelector(`.mine-cell[data-index="${index}"]`);
+            minesGrid[index].revealed = true;
+            
+            if (minesGrid[index].isMine) {
+                cell.className = 'mine-cell mine';
+                cell.textContent = '💣';
+                
+                showLoseAnimation('МИНА!');
+                showNotification('Вы наткнулись на мину! Игра окончена', 'error');
+                
+                gameHistory.mines.games++;
+                gameHistory.mines.losses++;
+                gameHistory.mines.profit -= minesBetAmount;
+                updateStatsDisplay();
+                saveToStorage();
+                
+                minesGameActive = false;
+                document.getElementById('mines-cashout-btn').disabled = true;
+                document.getElementById('mines-start-btn').disabled = false;
+            } else {
+                cell.className = 'mine-cell revealed';
+                cell.textContent = '💎';
+                
+                minesCashoutAmount = Math.floor(minesCashoutAmount * 1.3);
+                
+                const safeCellsLeft = minesGrid.filter(cell => !cell.revealed && !cell.isMine).length;
+                if (safeCellsLeft === 0) {
+                    const winAmount = minesCashoutAmount;
+                    updateBalance(winAmount, 'mines', true);
+                    
+                    showWinAnimation('ВЫИГРЫШ: ' + winAmount + ' ⭐');
+                    showNotification('Вы нашли все драгоценности! Поздравляем!', 'success');
+                    
+                    gameHistory.mines.games++;
+                    gameHistory.mines.wins++;
+                    gameHistory.mines.profit += (winAmount - minesBetAmount);
+                    updateStatsDisplay();
+                    saveToStorage();
+                    
+                    minesGameActive = false;
+                    document.getElementById('mines-cashout-btn').disabled = true;
+                    document.getElementById('mines-start-btn').disabled = false;
+                } else {
+                    showNotification('Найдена драгоценность! Текущий выигрыш: ' + minesCashoutAmount + '⭐', 'info');
+                }
+            }
+        }
+
+        async function cashOutMines() {
+            if (!minesGameActive) return;
+            
+            const winAmount = minesCashoutAmount;
+            updateBalance(winAmount, 'mines', true);
+            
+            showWinAnimation('+ ' + winAmount + ' ⭐');
+            showNotification('Вы забрали деньги!', 'success');
+            
+            gameHistory.mines.games++;
+            gameHistory.mines.wins++;
+            gameHistory.mines.profit += (winAmount - minesBetAmount);
+            updateStatsDisplay();
+            saveToStorage();
+            
+            minesGameActive = false;
+            document.getElementById('mines-cashout-btn').disabled = true;
+            document.getElementById('mines-start-btn').disabled = false;
+        }
+
+        // ==================== РУЛЕТКА ====================
+        function setRouletteBet(amount) {
+            document.getElementById('roulette-bet').value = amount;
+        }
+
+        function placeRouletteBet(color) {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
+            if (rouletteSpinning) {
+                showNotification('Дождитесь окончания вращения!', 'error');
+                return;
+            }
+            
+            const betInput = document.getElementById('roulette-bet');
+            const bet = parseInt(betInput.value);
+            
+            if (isNaN(bet) || bet < 10) {
+                showNotification('Минимальная ставка: 10⭐', 'error');
+                return;
+            }
+            
+            if (bet > userBalance) {
+                showNotification('Недостаточно средств', 'error');
+                return;
+            }
+            
+            rouletteBetAmount = bet;
+            rouletteBetColor = color;
+            
+            showNotification('Ставка принята: ' + color, 'info');
+        }
+
+        async function spinRoulette() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
+            if (rouletteSpinning) {
+                showNotification('Рулетка уже крутится!', 'error');
+                return;
+            }
+            
+            if (rouletteBetAmount === 0) {
+                showNotification('Сначала сделайте ставку', 'error');
+                return;
+            }
+            
+            updateBalance(-rouletteBetAmount, 'roulette', false);
+            rouletteSpinning = true;
+            document.getElementById('roulette-spin-btn').disabled = true;
+            
+            const wheel = document.querySelector('.roulette-wheel');
+            const ball = document.querySelector('.roulette-ball');
+            
+            wheel.style.animation = 'spin 0.5s linear infinite';
+            ball.style.animation = 'ballOrbit 0.5s linear infinite';
+            
+            setTimeout(async () => {
+                const random = Math.random() * 100;
+                let resultColor, multiplier;
+                
+                if (random < 1) {
+                    resultColor = 'green';
+                    multiplier = 36;
+                } else if (random < 46) {
+                    resultColor = 'red';
+                    multiplier = 2;
+                } else {
+                    resultColor = 'black';
+                    multiplier = 2;
+                }
+                
+                wheel.style.animation = 'none';
+                ball.style.animation = 'none';
+                
+                setTimeout(async () => {
+                    if (resultColor === rouletteBetColor) {
+                        const winAmount = Math.floor(rouletteBetAmount * multiplier);
+                        updateBalance(winAmount, 'roulette', true);
+                        
+                        showWinAnimation('ВЫИГРЫШ: x' + multiplier);
+                        showNotification('Поздравляем! Вы угадали цвет! +' + winAmount + '⭐', 'success');
+                        
+                        gameHistory.roulette.games++;
+                        gameHistory.roulette.wins++;
+                        gameHistory.roulette.profit += (winAmount - rouletteBetAmount);
+                    } else {
+                        showLoseAnimation('ПРОИГРЫШ');
+                        showNotification('К сожалению, вы не угадали цвет', 'error');
+                        
+                        gameHistory.roulette.games++;
+                        gameHistory.roulette.losses++;
+                        gameHistory.roulette.profit -= rouletteBetAmount;
+                    }
+                    
+                    updateStatsDisplay();
+                    saveToStorage();
+                    
+                    rouletteBetAmount = 0;
+                    rouletteBetColor = '';
+                    rouletteSpinning = false;
+                    document.getElementById('roulette-spin-btn').disabled = false;
+                    
+                }, 500);
+                
+            }, 2000);
+        }
+
+        // ==================== СЛОТЫ ====================
+        function setSlotsBet(amount) {
+            document.getElementById('slots-bet').value = amount;
+        }
+
+        function resetSlots() {
+            const reels = document.querySelectorAll('.slot-reel');
+            reels.forEach(reel => {
+                const items = reel.querySelector('.slot-items');
+                items.style.animation = 'none';
+            });
+            document.getElementById('slots-result').textContent = '';
+        }
+
+        async function spinSlots() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
+            if (slotsSpinning) {
+                showNotification('Слоты уже крутятся!', 'error');
+                return;
+            }
+            
+            const betInput = document.getElementById('slots-bet');
+            const bet = parseInt(betInput.value);
+            
+            if (isNaN(bet) || bet < 10) {
+                showNotification('Минимальная ставка: 10⭐', 'error');
+                return;
+            }
+            
+            if (bet > userBalance) {
+                showNotification('Недостаточно средств', 'error');
+                return;
+            }
+            
+            updateBalance(-bet, 'slots', false);
+            slotsBetAmount = bet;
+            slotsSpinning = true;
+            document.getElementById('slots-spin-btn').disabled = true;
+            document.getElementById('slots-auto-btn').disabled = true;
+            
+            const reels = document.querySelectorAll('.slot-reel');
+            reels.forEach(reel => {
+                const items = reel.querySelector('.slot-items');
+                items.style.animation = 'slotSpin 0.1s linear';
+            });
+            
+            setTimeout(() => {
+                const results = [];
+                reels.forEach((reel, index) => {
+                    const items = reel.querySelector('.slot-items');
+                    items.style.animation = 'none';
+                    
+                    // Генерируем результат с разной вероятностью
+                    const rand = Math.random();
+                    let symbol;
+                    if (rand < 0.4) symbol = '🍒';
+                    else if (rand < 0.7) symbol = '🍋';
+                    else if (rand < 0.85) symbol = '🍉';
+                    else if (rand < 0.95) symbol = '⭐';
+                    else symbol = '7️⃣';
+                    
+                    items.querySelector('.slot-item:nth-child(3)').textContent = symbol;
+                    results.push(symbol);
+                });
+                
+                checkSlotsWin(results, bet);
+                
+                slotsSpinning = false;
+                document.getElementById('slots-spin-btn').disabled = false;
+                document.getElementById('slots-auto-btn').disabled = false;
+                
+            }, 2000);
+        }
+
+        async function checkSlotsWin(results, bet) {
+            let winMultiplier = 0;
+            let winMessage = '';
+            
+            // Проверка джекпота (5 семёрок) = x12
+            if (results.every(symbol => symbol === '7️⃣')) {
+                winMultiplier = 12;
+                winMessage = '🎰 ДЖЕКПОТ! x12 🎰';
+            }
+            // Проверка 4 семёрок
+            else if (results.filter(symbol => symbol === '7️⃣').length >= 4) {
+                winMultiplier = 8;
+                winMessage = '4 СЕМЁРКИ! x8';
+            }
+            // Проверка 3 семёрок
+            else if (results.filter(symbol => symbol === '7️⃣').length >= 3) {
+                winMultiplier = 5;
+                winMessage = '3 СЕМЁРКИ! x5';
+            }
+            // Проверка 5 одинаковых
+            else if (new Set(results).size === 1) {
+                winMultiplier = 6;
+                winMessage = '5 ОДИНАКОВЫХ! x6';
+            }
+            // Проверка 3+ вишен
+            else if (results.filter(symbol => symbol === '🍒').length >= 3) {
+                winMultiplier = 2;
+                winMessage = '3+ ВИШНИ! x2';
+            }
+            // Проверка 3+ звёзд
+            else if (results.filter(symbol => symbol === '⭐').length >= 3) {
+                winMultiplier = 3;
+                winMessage = '3+ ЗВЕЗДЫ! x3';
+            }
+            
+            if (winMultiplier > 0) {
+                const winAmount = Math.floor(bet * winMultiplier);
+                updateBalance(winAmount, 'slots', true);
+                
+                showWinAnimation(winMessage);
+                showNotification('Выигрыш: ' + winAmount + '⭐', 'success');
+                
+                gameHistory.slots.games++;
+                gameHistory.slots.wins++;
+                gameHistory.slots.profit += (winAmount - bet);
+            } else {
+                showLoseAnimation('Нет выигрыша');
+                showNotification('Попробуйте ещё раз!', 'error');
+                
+                gameHistory.slots.games++;
+                gameHistory.slots.losses++;
+                gameHistory.slots.profit -= bet;
+            }
+            
+            document.getElementById('slots-result').textContent = results.join(' ');
+            updateStatsDisplay();
+            saveToStorage();
+        }
+
+        function autoSpinSlots() {
+            if (slotsSpinning) {
+                showNotification('Слоты уже крутятся!', 'error');
+                return;
+            }
+            
+            let spins = 10;
+            slotsAutoSpinCount = spins;
+            document.getElementById('slots-spin-btn').disabled = true;
+            document.getElementById('slots-auto-btn').disabled = true;
+            
+            function spin() {
+                if (slotsAutoSpinCount > 0 && userBalance >= 10) {
+                    setSlotsBet(10);
+                    spinSlots();
+                    slotsAutoSpinCount--;
+                    
+                    if (slotsAutoSpinCount > 0) {
+                        setTimeout(spin, 2500);
+                    } else {
+                        document.getElementById('slots-spin-btn').disabled = false;
+                        document.getElementById('slots-auto-btn').disabled = false;
+                    }
+                } else {
+                    document.getElementById('slots-spin-btn').disabled = false;
+                    document.getElementById('slots-auto-btn').disabled = false;
+                }
+            }
+            
+            spin();
+        }
+
+        // ==================== DICE ИГРА ====================
+        function setDiceBet(amount) {
+            document.getElementById('dice-bet').value = amount;
+        }
+
+        async function rollDice() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
+            if (diceRolling) {
+                showNotification('Кости уже бросаются!', 'error');
+                return;
+            }
+            
+            const betInput = document.getElementById('dice-bet');
+            const bet = parseInt(betInput.value);
+            const guess = parseInt(document.getElementById('dice-guess').value);
+            
+            if (isNaN(bet) || bet < 10) {
+                showNotification('Минимальная ставка: 10⭐', 'error');
+                return;
+            }
+            
+            if (bet > userBalance) {
+                showNotification('Недостаточно средств', 'error');
+                return;
+            }
+            
+            updateBalance(-bet, 'dice', false);
+            diceBetAmount = bet;
+            diceRolling = true;
+            document.getElementById('dice-roll-btn').disabled = true;
+            
+            const diceResult = document.getElementById('dice-result');
+            diceResult.style.animation = 'diceRoll 1s';
+            
+            setTimeout(async () => {
+                const randomNumber = Math.floor(Math.random() * 100) + 1;
+                diceResult.textContent = randomNumber;
+                
+                const difference = Math.abs(randomNumber - guess);
+                let winMultiplier = 0;
+                
+                if (difference === 0) {
+                    winMultiplier = 4;
+                } else if (difference <= 5) {
+                    winMultiplier = 2;
+                } else if (difference <= 10) {
+                    winMultiplier = 1.5;
+                }
+                
+                if (winMultiplier > 0) {
+                    const winAmount = Math.floor(bet * winMultiplier);
+                    updateBalance(winAmount, 'dice', true);
+                    
+                    showWinAnimation('x' + winMultiplier);
+                    showNotification('Вы угадали! +' + winAmount + '⭐', 'success');
+                    
+                    gameHistory.dice.games++;
+                    gameHistory.dice.wins++;
+                    gameHistory.dice.profit += (winAmount - bet);
+                } else {
+                    showLoseAnimation('НЕ УГАДАЛ');
+                    showNotification('Не повезло. Попробуйте ещё!', 'error');
+                    
+                    gameHistory.dice.games++;
+                    gameHistory.dice.losses++;
+                    gameHistory.dice.profit -= bet;
+                }
+                
+                updateStatsDisplay();
+                saveToStorage();
+                
+                setTimeout(() => {
+                    diceResult.style.animation = '';
+                    diceRolling = false;
+                    document.getElementById('dice-roll-btn').disabled = false;
+                }, 1000);
+                
+            }, 1000);
+        }
+
+        // ==================== ПОПОЛНЕНИЕ И ВЫВОД ====================
+        function goToBot() {
+            window.open('https://t.me/BezdarMoneyBot', '_blank');
+        }
+
+        async function createWithdrawal() {
+            const amount = parseInt(document.getElementById('withdraw-amount').value);
+            const username = document.getElementById('withdraw-username').value.trim();
+            
+            if (userId === 0 || sessionToken === 'demo') {
+                showNotification('В демо-режиме вывод недоступен', 'warning');
+                return;
+            }
+            
+            if (isNaN(amount) || amount < 100) {
+                showNotification('Минимальная сумма вывода: 100⭐', 'error');
+                return;
+            }
+            
+            if (amount > userBalance) {
+                showNotification('Недостаточно средств для вывода', 'error');
+                return;
+            }
+            
+            if (!username.startsWith('@')) {
+                showNotification('Введите корректный Telegram username (начинается с @)', 'error');
+                return;
+            }
+            
+            updateBalance(-amount, 'withdrawal', false);
+            
+            showNotification('Заявка на вывод создана! Админ свяжется с вами в Telegram', 'success');
+            hideModal('withdrawModal');
+            
+            // Здесь можно добавить отправку заявки на сервер
+            console.log('📤 ЗАЯВКА НА ВЫВОД:');
+            console.log('👤 User ID:', userId);
+            console.log('💰 Сумма:', amount + '⭐');
+            console.log('📱 Username:', username);
+            console.log('⏰ Время:', new Date().toLocaleString());
+        }
+
+        // ==================== БОНУСЫ И ПРОМОКОДЫ ====================
+        async function activatePromoCode() {
+            const promoCode = document.getElementById('promo-code').value.trim().toUpperCase();
+            
+            if (!promoCode) {
+                showNotification('Введите промокод', 'error');
+                return;
+            }
+            
+            if (promoCode.length < 3) {
+                showNotification('Промокод должен быть не менее 3 символов', 'error');
+                return;
+            }
+            
+            if (activatedPromoCodes.includes(promoCode)) {
+                showNotification('Этот промокод уже активирован', 'warning');
+                return;
+            }
+            
+            // Только конкретные промокоды работают
+            const validPromoCodes = {
+                'WELCOME100': 100,
+                'BEZDAR500': 500,
+                'LUCK777': 777,
+                'START50': 50,
+                'BONUS200': 200
+            };
+            
+            let bonusAmount = 0;
+            
+            if (validPromoCodes[promoCode]) {
+                bonusAmount = validPromoCodes[promoCode];
+            } else {
+                showNotification('Неверный промокод', 'error');
+                return;
+            }
+            
+            updateBalance(bonusAmount, 'promo', true);
+            activatedPromoCodes.push(promoCode);
+            
+            saveToStorage();
+            updateActivatedPromos();
+            
+            showWinAnimation('+' + bonusAmount + '⭐');
+            showNotification('Промокод активирован! +' + bonusAmount + '⭐', 'success');
+            
+            document.getElementById('promo-code').value = '';
+        }
+
+        function updateActivatedPromos() {
+            const container = document.getElementById('activated-promos');
+            if (activatedPromoCodes.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center;">Нет активированных промокодов</p>';
+            } else {
+                container.innerHTML = activatedPromoCodes.map(code => 
+                    `<div style="margin: 5px 0; padding: 5px 10px; background: rgba(0,255,0,0.1); border-radius: 5px; border-left: 3px solid #00ff00;">
+                        🎫 ${code}
+                    </div>`
+                ).join('');
+            }
+        }
+
+        // ==================== СТАТИСТИКА ====================
+        function showStats() {
+            if (userId === null) {
+                showLoginModal();
+                return;
+            }
+            
+            document.querySelectorAll('.game-window').forEach(el => {
+                el.style.display = 'none';
+            });
+            document.querySelector('.games-grid').style.display = 'none';
+            
+            document.getElementById('stats-window').style.display = 'block';
+        }
+
+        function updateStatsDisplay() {
+            document.getElementById('crash-games').textContent = gameHistory.crash.games;
+            document.getElementById('crash-wins').textContent = gameHistory.crash.wins;
+            document.getElementById('crash-losses').textContent = gameHistory.crash.losses;
+            document.getElementById('crash-profit').textContent = gameHistory.crash.profit;
+            
+            document.getElementById('mines-games').textContent = gameHistory.mines.games;
+            document.getElementById('mines-wins').textContent = gameHistory.mines.wins;
+            document.getElementById('mines-losses').textContent = gameHistory.mines.losses;
+            document.getElementById('mines-profit').textContent = gameHistory.mines.profit;
+            
+            document.getElementById('roulette-games').textContent = gameHistory.roulette.games;
+            document.getElementById('roulette-wins').textContent = gameHistory.roulette.wins;
+            document.getElementById('roulette-losses').textContent = gameHistory.roulette.losses;
+            document.getElementById('roulette-profit').textContent = gameHistory.roulette.profit;
+            
+            document.getElementById('slots-games').textContent = gameHistory.slots.games;
+            document.getElementById('slots-wins').textContent = gameHistory.slots.wins;
+            document.getElementById('slots-losses').textContent = gameHistory.slots.losses;
+            document.getElementById('slots-profit').textContent = gameHistory.slots.profit;
+            
+            document.getElementById('dice-games').textContent = gameHistory.dice.games;
+            document.getElementById('dice-wins').textContent = gameHistory.dice.wins;
+            document.getElementById('dice-losses').textContent = gameHistory.dice.losses;
+            document.getElementById('dice-profit').textContent = gameHistory.dice.profit;
+        }
+
+        // ==================== LOCAL STORAGE ====================
+        function saveToStorage() {
+            const data = {
+                balance: userBalance,
+                gameHistory: gameHistory,
+                activatedPromoCodes: activatedPromoCodes
+            };
+            localStorage.setItem('bezdarMoneyData', JSON.stringify(data));
+        }
+
+        function loadFromStorage() {
+            const saved = localStorage.getItem('bezdarMoneyData');
+            if (saved) {
+                const data = JSON.parse(saved);
+                userBalance = data.balance || 0;
+                gameHistory = data.gameHistory || {
+                    crash: { games: 0, wins: 0, losses: 0, profit: 0 },
+                    mines: { games: 0, wins: 0, losses: 0, profit: 0 },
+                    roulette: { games: 0, wins: 0, losses: 0, profit: 0 },
+                    slots: { games: 0, wins: 0, losses: 0, profit: 0 },
+                    dice: { games: 0, wins: 0, losses: 0, profit: 0 }
+                };
+                activatedPromoCodes = data.activatedPromoCodes || [];
+                
+                updateActivatedPromos();
+                updateBalanceDisplay();
+            }
+        }
+
+        // ==================== АВТОМАТИЧЕСКАЯ СИНХРОНИЗАЦИЯ ====================
+        // Синхронизация баланса каждые 30 секунд
+        setInterval(() => {
+            if (userId && userId !== 0 && sessionToken && sessionToken !== 'demo') {
+                loadBalanceFromServer();
+            }
+        }, 30000);
+
+        // Синхронизация при возвращении на вкладку
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && userId && userId !== 0 && sessionToken && sessionToken !== 'demo') {
+                loadBalanceFromServer();
+            }
+        });
+    </script>
+    <script>
+    // Дополнительный скрипт для обработки параметров URL
+    (function() {
+        // Функция для парсинга параметров из хэша
+        function parseHashParams() {
+            const hash = window.location.hash.substring(1);
+            const params = {};
+            
+            if (hash) {
+                const pairs = hash.split('&');
+                pairs.forEach(pair => {
+                    const [key, value] = pair.split('=');
+                    if (key && value) {
+                        params[decodeURIComponent(key)] = decodeURIComponent(value);
+                    }
+                });
+            }
+            
+            return params;
+        }
+        
+        // Проверяем параметры при загрузке
+        setTimeout(() => {
+            const hashParams = parseHashParams();
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Объединяем параметры из хэша и query string
+            const allParams = {
+                ...Object.fromEntries(urlParams.entries()),
+                ...hashParams
+            };
+            
+            if (allParams.user_id && allParams.session_token) {
+                console.log('Автоматическая авторизация по параметрам:', allParams);
+                
+                // Сохраняем данные
+                localStorage.setItem('tg_user_id', allParams.user_id);
+                localStorage.setItem('tg_session_token', allParams.session_token);
+                
+                // Обновляем URL без параметров
+                if (window.history.replaceState) {
+                    const cleanUrl = window.location.origin + window.location.pathname;
+                    window.history.replaceState({}, document.title, cleanUrl);
+                }
+                
+                // Перезагружаем страницу для применения авторизации
+                setTimeout(() => {
+                    window.location.reload();
+                }, 100);
+            }
+        }, 500);
+    })();
+</script>
 </body>
 </html>
