@@ -986,7 +986,7 @@
                 <div style="margin-top: 20px; color: #ffd700;">
                     <p>✈️ Самолёт взлетает, множитель растёт</p>
                     <p>💥 Взрыв происходит случайно (1.2x - 5x) часто</p>
-                    <p>💰 Нажми "ЗАБРАТЬ" до взрыва чтобы выиграть</p>
+                    <p>💰 Нажми "ЗАБРАТЬ" от 1.4x чтобы выиграть</p>
                 </div>
             </div>
         </div>
@@ -1056,7 +1056,7 @@
                         <div class="chip" onclick="setRouletteBet(1000)">1000</div>
                     </div>
                     
-                    <button class="btn btn-success" onclick="spinRoulette()">КРУТИТЬ</button>
+                    <button class="btn btn-success" onclick="spinRoulette()" id="roulette-spin-btn">КРУТИТЬ</button>
                     <button class="btn btn-danger" onclick="exitGame()">ВЫЙТИ</button>
                 </div>
             </div>
@@ -1125,7 +1125,7 @@
                 <div style="margin: 30px 0;">
                     <div id="slots-result" style="font-size: 28px; color: #ffd700; margin-bottom: 20px;"></div>
                     <p style="color: #ffd700;">
-                        🎰 Джекпот 77777 = x1000!
+                        🎰 Джекпот 77777 = x12!
                     </p>
                 </div>
                 
@@ -1139,8 +1139,8 @@
                         <div class="chip" onclick="setSlotsBet(1000)">1000</div>
                     </div>
                     
-                    <button class="btn btn-success" onclick="spinSlots()">ИГРАТЬ</button>
-                    <button class="btn btn-warning" onclick="autoSpinSlots()">АВТОИГРА (10)</button>
+                    <button class="btn btn-success" onclick="spinSlots()" id="slots-spin-btn">ИГРАТЬ</button>
+                    <button class="btn btn-warning" onclick="autoSpinSlots()" id="slots-auto-btn">АВТОИГРА (10)</button>
                     <button class="btn btn-danger" onclick="exitGame()">ВЫЙТИ</button>
                 </div>
             </div>
@@ -1184,7 +1184,7 @@
                         <div class="chip" onclick="setDiceBet(1000)">1000</div>
                     </div>
                     
-                    <button class="btn btn-success" onclick="rollDice()">БРОСИТЬ КОСТИ</button>
+                    <button class="btn btn-success" onclick="rollDice()" id="dice-roll-btn">БРОСИТЬ КОСТИ</button>
                     <button class="btn btn-danger" onclick="exitGame()">ВЫЙТИ</button>
                 </div>
             </div>
@@ -1364,7 +1364,7 @@
 
     <script>
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
-        let userBalance = 0; // Начинаем с 0
+        let userBalance = 0;
         let gameHistory = {
             crash: { games: 0, wins: 0, losses: 0, profit: 0 },
             mines: { games: 0, wins: 0, losses: 0, profit: 0 },
@@ -1381,6 +1381,7 @@
         let crashBetAmount = 0;
         let crashActive = false;
         let crashExplodePoint = 0;
+        let crashCashedOut = false;
         
         // MINES переменные
         let minesBetAmount = 0;
@@ -1392,29 +1393,28 @@
         // РУЛЕТКА переменные
         let rouletteBetAmount = 0;
         let rouletteBetColor = '';
+        let rouletteSpinning = false;
         
         // СЛОТЫ переменные
         let slotsBetAmount = 0;
         let slotsAutoSpinCount = 0;
+        let slotsSpinning = false;
         
         // DICE переменные
         let diceBetAmount = 0;
+        let diceRolling = false;
 
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
         document.addEventListener('DOMContentLoaded', function() {
-            // Скрываем загрузку сразу
             document.getElementById('loader').style.display = 'none';
-            
             createStars();
             loadFromStorage();
             updateBalanceDisplay();
             updateStatsDisplay();
             
-            // Обновляем баланс в модальных окнах
             document.getElementById('modal-balance').textContent = userBalance;
             document.getElementById('withdraw-balance').textContent = userBalance;
             
-            // Настройка слайдера для DICE
             const diceSlider = document.getElementById('dice-guess');
             const guessValue = document.getElementById('guess-value');
             
@@ -1422,7 +1422,6 @@
                 guessValue.textContent = this.value;
             });
             
-            // Предупреждение от BezdarMoney при загрузке
             setTimeout(() => {
                 showNotification('💰 Добро пожаловать в BezdarMoney Casino!', 'info');
             }, 1000);
@@ -1507,22 +1506,18 @@
 
         // ==================== УПРАВЛЕНИЕ ИГРАМИ ====================
         function startGame(game) {
-            // Скрыть все игровые окна
             document.querySelectorAll('.game-window').forEach(el => {
                 el.style.display = 'none';
             });
             document.querySelector('.games-grid').style.display = 'none';
             
-            // Обновить активную карточку
             document.querySelectorAll('.game-card').forEach(card => {
                 card.classList.remove('active');
             });
             document.querySelector(`.game-card[onclick*="${game}"]`).classList.add('active');
             
-            // Показать выбранную игру
             document.getElementById(`${game}-game`).style.display = 'block';
             
-            // Особые действия для каждой игры
             if (game === 'mines') {
                 resetMinesGrid();
             } else if (game === 'slots') {
@@ -1531,20 +1526,18 @@
         }
 
         function exitGame() {
-            // Скрыть все игровые окна
             document.querySelectorAll('.game-window').forEach(el => {
                 el.style.display = 'none';
             });
             
-            // Показать меню игр
             document.querySelector('.games-grid').style.display = 'grid';
             
-            // Сбросить активные игры
             if (crashActive) {
                 clearInterval(crashInterval);
                 crashActive = false;
                 document.getElementById('cashout-btn').disabled = true;
                 document.getElementById('crash-start-btn').disabled = false;
+                crashCashedOut = false;
             }
             
             if (minesGameActive) {
@@ -1552,6 +1545,10 @@
                 document.getElementById('mines-cashout-btn').disabled = true;
                 document.getElementById('mines-start-btn').disabled = false;
             }
+            
+            rouletteSpinning = false;
+            slotsSpinning = false;
+            diceRolling = false;
         }
 
         // ==================== CRASH ИГРА ====================
@@ -1578,60 +1575,60 @@
                 return;
             }
             
-            // Снимаем ставку
             updateBalance(-bet);
             crashBetAmount = bet;
             crashActive = true;
+            crashCashedOut = false;
             
-            // Сброс самолёта
             const plane = document.getElementById('crash-plane');
             plane.style.bottom = '20px';
             plane.style.background = 'linear-gradient(45deg, #3498db, #1e90ff)';
             
-            // Генерация точки взрыва (чаще падает, 1.2x - 3x в 80% случаев)
+            // Генерация точки взрыва (от 1.2x до 3x в 70% случаев, до 10x в 30%)
             const random = Math.random();
-            if (random < 0.8) {
-                crashExplodePoint = 1.2 + Math.random() * 1.8; // 80% шанс на взрыв до 3x
+            if (random < 0.7) {
+                crashExplodePoint = 1.2 + Math.random() * 1.8; // 70% до 3x
             } else {
-                crashExplodePoint = 3.0 + Math.random() * 7.0; // 20% шанс на взрыв до 10x
+                crashExplodePoint = 3.0 + Math.random() * 7.0; // 30% до 10x
             }
             
             crashMultiplier = 1.0;
             
-            // Активация кнопок
             document.getElementById('cashout-btn').disabled = false;
             document.getElementById('crash-start-btn').disabled = true;
             
-            // Запуск анимации
             crashInterval = setInterval(updateCrash, 100);
             
-            showNotification('Самолёт взлетает! Забирайте деньги вовремя!', 'warning');
+            showNotification('Самолёт взлетает! Забирайте деньги от 1.4x!', 'warning');
         }
 
         function updateCrash() {
             if (!crashActive) return;
             
-            // Увеличиваем множитель
             crashMultiplier += 0.01;
             
-            // Обновляем отображение
             document.getElementById('crash-multiplier').textContent = crashMultiplier.toFixed(2) + 'x';
             
-            // Двигаем самолёт
             const plane = document.getElementById('crash-plane');
             const newBottom = 20 + (crashMultiplier - 1) * 25;
             plane.style.bottom = newBottom + 'px';
             
-            // Проверка на взрыв
             if (crashMultiplier >= crashExplodePoint) {
                 crashExplode();
             }
         }
 
         function cashOut() {
-            if (!crashActive) return;
+            if (!crashActive || crashCashedOut) return;
+            
+            // Проверяем минимальный множитель 1.4x
+            if (crashMultiplier < 1.4) {
+                showNotification('Можно забрать только от 1.4x!', 'error');
+                return;
+            }
             
             crashActive = false;
+            crashCashedOut = true;
             clearInterval(crashInterval);
             
             const winAmount = Math.floor(crashBetAmount * crashMultiplier);
@@ -1640,44 +1637,54 @@
             showWinAnimation('+ ' + winAmount + ' ⭐');
             showNotification('Поздравляем! Вы успели забрать деньги!', 'success');
             
-            // Статистика
             gameHistory.crash.games++;
             gameHistory.crash.wins++;
             gameHistory.crash.profit += (winAmount - crashBetAmount);
             updateStatsDisplay();
             saveToStorage();
             
-            // Сброс кнопок
             document.getElementById('cashout-btn').disabled = true;
             document.getElementById('crash-start-btn').disabled = false;
+            
+            // Авто сброс через 3 секунды
+            setTimeout(() => {
+                const plane = document.getElementById('crash-plane');
+                plane.style.background = 'linear-gradient(45deg, #3498db, #1e90ff)';
+                plane.style.bottom = '20px';
+                document.getElementById('crash-multiplier').textContent = '1.00x';
+                crashCashedOut = false;
+            }, 3000);
         }
 
         function crashExplode() {
+            if (!crashActive) return;
+            
             crashActive = false;
             clearInterval(crashInterval);
             
             const plane = document.getElementById('crash-plane');
             plane.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
             
-            showLoseAnimation('💥 ВЗРЫВ!');
-            showNotification('Самолёт взорвался! Вы проиграли ставку', 'error');
+            // Если не успели забрать - проигрыш
+            if (!crashCashedOut) {
+                showLoseAnimation('💥 ВЗРЫВ!');
+                showNotification('Самолёт взорвался! Вы проиграли ' + crashBetAmount + '⭐', 'error');
+                
+                gameHistory.crash.games++;
+                gameHistory.crash.losses++;
+                gameHistory.crash.profit -= crashBetAmount;
+                updateStatsDisplay();
+                saveToStorage();
+            }
             
-            // Статистика
-            gameHistory.crash.games++;
-            gameHistory.crash.losses++;
-            gameHistory.crash.profit -= crashBetAmount;
-            updateStatsDisplay();
-            saveToStorage();
-            
-            // Сброс кнопок
             document.getElementById('cashout-btn').disabled = true;
             document.getElementById('crash-start-btn').disabled = false;
             
-            // Авто сброс через 2 секунды
             setTimeout(() => {
                 plane.style.background = 'linear-gradient(45deg, #3498db, #1e90ff)';
                 plane.style.bottom = '20px';
                 document.getElementById('crash-multiplier').textContent = '1.00x';
+                crashCashedOut = false;
             }, 2000);
         }
 
@@ -1727,16 +1734,13 @@
                 return;
             }
             
-            // Снимаем ставку
             updateBalance(-bet);
             minesBetAmount = bet;
             minesGameActive = true;
             minesCashoutAmount = bet;
             
-            // Сброс сетки
             resetMinesGrid();
             
-            // Расставляем мины (5 мин)
             let minesPlaced = 0;
             while (minesPlaced < 5) {
                 const index = Math.floor(Math.random() * 25);
@@ -1746,7 +1750,6 @@
                 }
             }
             
-            // Активация кнопок
             document.getElementById('mines-cashout-btn').disabled = false;
             document.getElementById('mines-start-btn').disabled = true;
             
@@ -1769,7 +1772,6 @@
                 showLoseAnimation('МИНА!');
                 showNotification('Вы наткнулись на мину! Игра окончена', 'error');
                 
-                // Статистика
                 gameHistory.mines.games++;
                 gameHistory.mines.losses++;
                 gameHistory.mines.profit -= minesBetAmount;
@@ -1783,20 +1785,16 @@
                 cell.className = 'mine-cell revealed';
                 cell.textContent = '💎';
                 
-                // Увеличиваем выигрыш
                 minesCashoutAmount = Math.floor(minesCashoutAmount * 1.3);
                 
-                // Проверяем, остались ли безопасные клетки
                 const safeCellsLeft = minesGrid.filter(cell => !cell.revealed && !cell.isMine).length;
                 if (safeCellsLeft === 0) {
-                    // Все безопасные клетки открыты - ПОБЕДА
                     const winAmount = minesCashoutAmount;
                     updateBalance(winAmount);
                     
                     showWinAnimation('ВЫИГРЫШ: ' + winAmount + ' ⭐');
                     showNotification('Вы нашли все драгоценности! Поздравляем!', 'success');
                     
-                    // Статистика
                     gameHistory.mines.games++;
                     gameHistory.mines.wins++;
                     gameHistory.mines.profit += (winAmount - minesBetAmount);
@@ -1821,7 +1819,6 @@
             showWinAnimation('+ ' + winAmount + ' ⭐');
             showNotification('Вы забрали деньги!', 'success');
             
-            // Статистика
             gameHistory.mines.games++;
             gameHistory.mines.wins++;
             gameHistory.mines.profit += (winAmount - minesBetAmount);
@@ -1839,6 +1836,11 @@
         }
 
         function placeRouletteBet(color) {
+            if (rouletteSpinning) {
+                showNotification('Дождитесь окончания вращения!', 'error');
+                return;
+            }
+            
             const betInput = document.getElementById('roulette-bet');
             const bet = parseInt(betInput.value);
             
@@ -1859,42 +1861,44 @@
         }
 
         function spinRoulette() {
+            if (rouletteSpinning) {
+                showNotification('Рулетка уже крутится!', 'error');
+                return;
+            }
+            
             if (rouletteBetAmount === 0) {
                 showNotification('Сначала сделайте ставку', 'error');
                 return;
             }
             
-            // Снимаем ставку
             updateBalance(-rouletteBetAmount);
+            rouletteSpinning = true;
+            document.getElementById('roulette-spin-btn').disabled = true;
             
-            // Анимация вращения
             const wheel = document.querySelector('.roulette-wheel');
             const ball = document.querySelector('.roulette-ball');
             
             wheel.style.animation = 'spin 0.5s linear infinite';
             ball.style.animation = 'ballOrbit 0.5s linear infinite';
             
-            // Определяем результат с уменьшенными шансами
             setTimeout(() => {
                 const random = Math.random() * 100;
                 let resultColor, multiplier;
                 
-                if (random < 1) { // 1% шанс на зелёное (было 2%)
+                if (random < 1) {
                     resultColor = 'green';
                     multiplier = 36;
-                } else if (random < 46) { // 45% шанс на красное (было 47%)
+                } else if (random < 46) {
                     resultColor = 'red';
                     multiplier = 2;
-                } else { // 54% шанс на чёрное (было 51%)
+                } else {
                     resultColor = 'black';
                     multiplier = 2;
                 }
                 
-                // Останавливаем анимацию
                 wheel.style.animation = 'none';
                 ball.style.animation = 'none';
                 
-                // Показываем результат
                 setTimeout(() => {
                     if (resultColor === rouletteBetColor) {
                         const winAmount = Math.floor(rouletteBetAmount * multiplier);
@@ -1903,7 +1907,6 @@
                         showWinAnimation('ВЫИГРЫШ: x' + multiplier);
                         showNotification('Поздравляем! Вы угадали цвет! +' + winAmount + '⭐', 'success');
                         
-                        // Статистика
                         gameHistory.roulette.games++;
                         gameHistory.roulette.wins++;
                         gameHistory.roulette.profit += (winAmount - rouletteBetAmount);
@@ -1911,7 +1914,6 @@
                         showLoseAnimation('ПРОИГРЫШ');
                         showNotification('К сожалению, вы не угадали цвет', 'error');
                         
-                        // Статистика
                         gameHistory.roulette.games++;
                         gameHistory.roulette.losses++;
                         gameHistory.roulette.profit -= rouletteBetAmount;
@@ -1920,9 +1922,10 @@
                     updateStatsDisplay();
                     saveToStorage();
                     
-                    // Сброс ставки
                     rouletteBetAmount = 0;
                     rouletteBetColor = '';
+                    rouletteSpinning = false;
+                    document.getElementById('roulette-spin-btn').disabled = false;
                     
                 }, 500);
                 
@@ -1944,6 +1947,11 @@
         }
 
         function spinSlots() {
+            if (slotsSpinning) {
+                showNotification('Слоты уже крутятся!', 'error');
+                return;
+            }
+            
             const betInput = document.getElementById('slots-bet');
             const bet = parseInt(betInput.value);
             
@@ -1957,39 +1965,42 @@
                 return;
             }
             
-            // Снимаем ставку
             updateBalance(-bet);
             slotsBetAmount = bet;
+            slotsSpinning = true;
+            document.getElementById('slots-spin-btn').disabled = true;
+            document.getElementById('slots-auto-btn').disabled = true;
             
-            // Запускаем анимацию
             const reels = document.querySelectorAll('.slot-reel');
             reels.forEach(reel => {
                 const items = reel.querySelector('.slot-items');
                 items.style.animation = 'slotSpin 0.1s linear';
             });
             
-            // Определяем результат через 2 секунды
             setTimeout(() => {
-                // Останавливаем анимацию
-                reels.forEach(reel => {
+                const results = [];
+                reels.forEach((reel, index) => {
                     const items = reel.querySelector('.slot-items');
                     items.style.animation = 'none';
                     
-                    // Устанавливаем случайный символ
-                    const symbols = ['🍒', '🍋', '🍉', '⭐', '7️⃣', '🍒'];
-                    const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
-                    items.querySelector('.slot-item:nth-child(3)').textContent = randomSymbol;
-                });
-                
-                // Получаем результаты
-                const results = [];
-                reels.forEach(reel => {
-                    const symbol = reel.querySelector('.slot-items .slot-item:nth-child(3)').textContent;
+                    // Генерируем результат с разной вероятностью
+                    const rand = Math.random();
+                    let symbol;
+                    if (rand < 0.4) symbol = '🍒';
+                    else if (rand < 0.7) symbol = '🍋';
+                    else if (rand < 0.85) symbol = '🍉';
+                    else if (rand < 0.95) symbol = '⭐';
+                    else symbol = '7️⃣';
+                    
+                    items.querySelector('.slot-item:nth-child(3)').textContent = symbol;
                     results.push(symbol);
                 });
                 
-                // Проверяем комбинации
                 checkSlotsWin(results, bet);
+                
+                slotsSpinning = false;
+                document.getElementById('slots-spin-btn').disabled = false;
+                document.getElementById('slots-auto-btn').disabled = false;
                 
             }, 2000);
         }
@@ -1998,15 +2009,15 @@
             let winMultiplier = 0;
             let winMessage = '';
             
-            // Проверка джекпота (5 семёрок)
+            // Проверка джекпота (5 семёрок) = x12
             if (results.every(symbol => symbol === '7️⃣')) {
-                winMultiplier = 100;
-                winMessage = '🎰 ДЖЕКПОТ! x100 🎰';
+                winMultiplier = 12;
+                winMessage = '🎰 ДЖЕКПОТ! x12 🎰';
             }
             // Проверка 4 семёрок
             else if (results.filter(symbol => symbol === '7️⃣').length >= 4) {
-                winMultiplier = 20;
-                winMessage = '4 СЕМЁРКИ! x20';
+                winMultiplier = 8;
+                winMessage = '4 СЕМЁРКИ! x8';
             }
             // Проверка 3 семёрок
             else if (results.filter(symbol => symbol === '7️⃣').length >= 3) {
@@ -2015,18 +2026,18 @@
             }
             // Проверка 5 одинаковых
             else if (new Set(results).size === 1) {
-                winMultiplier = 10;
-                winMessage = '5 ОДИНАКОВЫХ! x10';
+                winMultiplier = 6;
+                winMessage = '5 ОДИНАКОВЫХ! x6';
             }
             // Проверка 3+ вишен
             else if (results.filter(symbol => symbol === '🍒').length >= 3) {
-                winMultiplier = 3;
-                winMessage = '3+ ВИШНИ! x3';
+                winMultiplier = 2;
+                winMessage = '3+ ВИШНИ! x2';
             }
             // Проверка 3+ звёзд
             else if (results.filter(symbol => symbol === '⭐').length >= 3) {
-                winMultiplier = 5;
-                winMessage = '3+ ЗВЕЗДЫ! x5';
+                winMultiplier = 3;
+                winMessage = '3+ ЗВЕЗДЫ! x3';
             }
             
             if (winMultiplier > 0) {
@@ -2036,7 +2047,6 @@
                 showWinAnimation(winMessage);
                 showNotification('Выигрыш: ' + winAmount + '⭐', 'success');
                 
-                // Статистика
                 gameHistory.slots.games++;
                 gameHistory.slots.wins++;
                 gameHistory.slots.profit += (winAmount - bet);
@@ -2044,7 +2054,6 @@
                 showLoseAnimation('Нет выигрыша');
                 showNotification('Попробуйте ещё раз!', 'error');
                 
-                // Статистика
                 gameHistory.slots.games++;
                 gameHistory.slots.losses++;
                 gameHistory.slots.profit -= bet;
@@ -2056,8 +2065,15 @@
         }
 
         function autoSpinSlots() {
+            if (slotsSpinning) {
+                showNotification('Слоты уже крутятся!', 'error');
+                return;
+            }
+            
             let spins = 10;
             slotsAutoSpinCount = spins;
+            document.getElementById('slots-spin-btn').disabled = true;
+            document.getElementById('slots-auto-btn').disabled = true;
             
             function spin() {
                 if (slotsAutoSpinCount > 0 && userBalance >= 10) {
@@ -2066,8 +2082,14 @@
                     slotsAutoSpinCount--;
                     
                     if (slotsAutoSpinCount > 0) {
-                        setTimeout(spin, 2500); // Пауза между спинами
+                        setTimeout(spin, 2500);
+                    } else {
+                        document.getElementById('slots-spin-btn').disabled = false;
+                        document.getElementById('slots-auto-btn').disabled = false;
                     }
+                } else {
+                    document.getElementById('slots-spin-btn').disabled = false;
+                    document.getElementById('slots-auto-btn').disabled = false;
                 }
             }
             
@@ -2080,6 +2102,11 @@
         }
 
         function rollDice() {
+            if (diceRolling) {
+                showNotification('Кости уже бросаются!', 'error');
+                return;
+            }
+            
             const betInput = document.getElementById('dice-bet');
             const bet = parseInt(betInput.value);
             const guess = parseInt(document.getElementById('dice-guess').value);
@@ -2094,29 +2121,27 @@
                 return;
             }
             
-            // Снимаем ставку
             updateBalance(-bet);
             diceBetAmount = bet;
+            diceRolling = true;
+            document.getElementById('dice-roll-btn').disabled = true;
             
-            // Анимация броска
             const diceResult = document.getElementById('dice-result');
             diceResult.style.animation = 'diceRoll 1s';
             
-            // Генерируем случайное число
             setTimeout(() => {
                 const randomNumber = Math.floor(Math.random() * 100) + 1;
                 diceResult.textContent = randomNumber;
                 
-                // Проверяем результат
                 const difference = Math.abs(randomNumber - guess);
                 let winMultiplier = 0;
                 
                 if (difference === 0) {
-                    winMultiplier = 4; // Точное попадание x4 (было x99)
+                    winMultiplier = 4;
                 } else if (difference <= 5) {
-                    winMultiplier = 2; // ±5 чисел x2 (было x5)
+                    winMultiplier = 2;
                 } else if (difference <= 10) {
-                    winMultiplier = 1.5; // ±10 чисел x1.5 (было x2)
+                    winMultiplier = 1.5;
                 }
                 
                 if (winMultiplier > 0) {
@@ -2126,7 +2151,6 @@
                     showWinAnimation('x' + winMultiplier);
                     showNotification('Вы угадали! +' + winAmount + '⭐', 'success');
                     
-                    // Статистика
                     gameHistory.dice.games++;
                     gameHistory.dice.wins++;
                     gameHistory.dice.profit += (winAmount - bet);
@@ -2134,7 +2158,6 @@
                     showLoseAnimation('НЕ УГАДАЛ');
                     showNotification('Не повезло. Попробуйте ещё!', 'error');
                     
-                    // Статистика
                     gameHistory.dice.games++;
                     gameHistory.dice.losses++;
                     gameHistory.dice.profit -= bet;
@@ -2143,9 +2166,10 @@
                 updateStatsDisplay();
                 saveToStorage();
                 
-                // Сброс анимации
                 setTimeout(() => {
                     diceResult.style.animation = '';
+                    diceRolling = false;
+                    document.getElementById('dice-roll-btn').disabled = false;
                 }, 1000);
                 
             }, 1000);
@@ -2176,13 +2200,11 @@
                 return;
             }
             
-            // Резервируем средства
             updateBalance(-amount);
             
             showNotification('Заявка на вывод создана! Админ свяжется с вами в Telegram', 'success');
             hideModal('withdrawModal');
             
-            // В реальном проекте здесь был бы запрос на сервер
             console.log('📤 ЗАЯВКА НА ВЫВОД:');
             console.log('👤 Username:', username);
             console.log('💰 Сумма:', amount + '⭐');
@@ -2198,8 +2220,8 @@
                 return;
             }
             
-            if (promoCode.length < 5) {
-                showNotification('Промокод должен быть не менее 5 символов', 'error');
+            if (promoCode.length < 3) {
+                showNotification('Промокод должен быть не менее 3 символов', 'error');
                 return;
             }
             
@@ -2208,36 +2230,33 @@
                 return;
             }
             
-            // В реальном проекте здесь проверка с сервером
-            // Для демо: определенные промокоды
+            // Только конкретные промокоды работают
+            const validPromoCodes = {
+                'WELCOME100': 100,
+                'BEZDAR500': 500,
+                'LUCK777': 777,
+                'START50': 50,
+                'BONUS200': 200
+            };
+            
             let bonusAmount = 0;
             
-            if (promoCode === 'WELCOME100') {
-                bonusAmount = 100;
-            } else if (promoCode === 'BEZDAR500') {
-                bonusAmount = 500;
-            } else if (promoCode === 'LUCK777') {
-                bonusAmount = 777;
+            if (validPromoCodes[promoCode]) {
+                bonusAmount = validPromoCodes[promoCode];
             } else {
-                // Случайный бонус для других кодов
-                bonusAmount = Math.floor(Math.random() * 300) + 50;
+                showNotification('Неверный промокод', 'error');
+                return;
             }
             
-            // Добавляем бонус
             updateBalance(bonusAmount);
             activatedPromoCodes.push(promoCode);
             
-            // Сохраняем
             saveToStorage();
-            
-            // Обновляем список
             updateActivatedPromos();
             
-            // Показываем уведомление
             showWinAnimation('+' + bonusAmount + '⭐');
             showNotification('Промокод активирован! +' + bonusAmount + '⭐', 'success');
             
-            // Очищаем поле
             document.getElementById('promo-code').value = '';
         }
 
@@ -2256,42 +2275,35 @@
 
         // ==================== СТАТИСТИКА ====================
         function showStats() {
-            // Скрыть все окна
             document.querySelectorAll('.game-window').forEach(el => {
                 el.style.display = 'none';
             });
             document.querySelector('.games-grid').style.display = 'none';
             
-            // Показать статистику
             document.getElementById('stats-window').style.display = 'block';
         }
 
         function updateStatsDisplay() {
-            // CRASH
             document.getElementById('crash-games').textContent = gameHistory.crash.games;
             document.getElementById('crash-wins').textContent = gameHistory.crash.wins;
             document.getElementById('crash-losses').textContent = gameHistory.crash.losses;
             document.getElementById('crash-profit').textContent = gameHistory.crash.profit;
             
-            // MINES
             document.getElementById('mines-games').textContent = gameHistory.mines.games;
             document.getElementById('mines-wins').textContent = gameHistory.mines.wins;
             document.getElementById('mines-losses').textContent = gameHistory.mines.losses;
             document.getElementById('mines-profit').textContent = gameHistory.mines.profit;
             
-            // РУЛЕТКА
             document.getElementById('roulette-games').textContent = gameHistory.roulette.games;
             document.getElementById('roulette-wins').textContent = gameHistory.roulette.wins;
             document.getElementById('roulette-losses').textContent = gameHistory.roulette.losses;
             document.getElementById('roulette-profit').textContent = gameHistory.roulette.profit;
             
-            // СЛОТЫ
             document.getElementById('slots-games').textContent = gameHistory.slots.games;
             document.getElementById('slots-wins').textContent = gameHistory.slots.wins;
             document.getElementById('slots-losses').textContent = gameHistory.slots.losses;
             document.getElementById('slots-profit').textContent = gameHistory.slots.profit;
             
-            // DICE
             document.getElementById('dice-games').textContent = gameHistory.dice.games;
             document.getElementById('dice-wins').textContent = gameHistory.dice.wins;
             document.getElementById('dice-losses').textContent = gameHistory.dice.losses;
@@ -2312,7 +2324,7 @@
             const saved = localStorage.getItem('bezdarMoneyData');
             if (saved) {
                 const data = JSON.parse(saved);
-                userBalance = data.balance || 0; // Начинаем с 0
+                userBalance = data.balance || 0;
                 gameHistory = data.gameHistory || {
                     crash: { games: 0, wins: 0, losses: 0, profit: 0 },
                     mines: { games: 0, wins: 0, losses: 0, profit: 0 },
