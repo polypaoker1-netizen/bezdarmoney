@@ -813,9 +813,86 @@
             width: 0%;
             transition: width 0.3s;
         }
+        
+        /* Загрузка */
+        .loader {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .loader-content {
+            text-align: center;
+            background: linear-gradient(135deg, #1a0033, #0a0a2a);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: #ffd700;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        /* Бонусы */
+        .bonus-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .bonus-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(138, 43, 226, 0.2));
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #ffd700;
+            transition: all 0.3s;
+        }
+        
+        .bonus-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .promo-input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 15px;
+            color: #ffd700;
+            font-size: 18px;
+            width: 100%;
+            margin: 10px 0;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
+    <!-- Загрузка -->
+    <div id="loader" class="loader">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <h2 style="color: #ffd700;">Загрузка BezdarMoney...</h2>
+            <p style="color: #fff; margin-top: 10px;">Пожалуйста, подождите</p>
+        </div>
+    </div>
+
     <!-- Звёздное небо -->
     <div id="stars"></div>
 
@@ -832,11 +909,12 @@
             
             <div class="user-info">
                 <div class="balance">
-                    <span id="balance">1000</span> ⭐
+                    <span id="balance">0</span> ⭐
                 </div>
                 <div>
                     <button class="btn btn-success" onclick="showModal('depositModal')">Пополнить</button>
                     <button class="btn btn-warning" onclick="showModal('withdrawModal')">Вывести</button>
+                    <button class="btn" onclick="showModal('bonusModal')">Бонусы</button>
                     <button class="btn" onclick="showStats()">Статистика</button>
                 </div>
             </div>
@@ -907,7 +985,7 @@
                 
                 <div style="margin-top: 20px; color: #ffd700;">
                     <p>✈️ Самолёт взлетает, множитель растёт</p>
-                    <p>💥 Взрыв происходит случайно (1.2x - 10x)</p>
+                    <p>💥 Взрыв происходит случайно (1.2x - 5x) часто</p>
                     <p>💰 Нажми "ЗАБРАТЬ" до взрыва чтобы выиграть</p>
                 </div>
             </div>
@@ -922,9 +1000,6 @@
             <div style="text-align: center; margin-bottom: 20px;">
                 <p style="font-size: 18px; color: #ffd700;">
                     Сделано ходов: <span id="moves-count" style="color: #00ff00; font-weight: bold;">0</span>
-                </p>
-                <p style="color: #ff9999; font-size: 14px;">
-                    ⚠️ На 3-м или 4-м ходе обязательно будет мина!
                 </p>
             </div>
             
@@ -1093,9 +1168,9 @@
                     </div>
                     
                     <div style="color: #ff9999; margin-top: 20px;">
-                        <p>🎯 Точное попадание: x99</p>
-                        <p>📏 ±5 чисел: x5</p>
-                        <p>📐 ±10 чисел: x2</p>
+                        <p>🎯 Точное попадание: x4</p>
+                        <p>📏 ±5 чисел: x2</p>
+                        <p>📐 ±10 чисел: x1.5</p>
                     </div>
                 </div>
                 
@@ -1180,7 +1255,7 @@
             <h2 style="color: #00ff00; margin-bottom: 20px;">💰 ПОПОЛНЕНИЕ БАЛАНСА</h2>
             
             <div style="margin: 20px 0;">
-                <p style="color: #ffd700; margin-bottom: 15px;">Ваш текущий баланс: <span id="modal-balance" style="color: #00ff00; font-weight: bold;">1000</span> ⭐</p>
+                <p style="color: #ffd700; margin-bottom: 15px;">Ваш текущий баланс: <span id="modal-balance" style="color: #00ff00; font-weight: bold;">0</span> ⭐</p>
                 
                 <input type="number" id="deposit-amount" class="bet-input" placeholder="Сумма пополнения" min="100" value="1000" style="width: 100%; max-width: 300px; margin: 20px auto;">
                 
@@ -1195,7 +1270,7 @@
                         1. Перейдите в нашего бота<br>
                         2. Нажмите "Пополнить"<br>
                         3. Введите сумму<br>
-                        4. Оплатите через TON<br>
+                        4. Оплатите звёздами<br>
                         5. Баланс обновится автоматически
                     </p>
                 </div>
@@ -1214,7 +1289,7 @@
             <h2 style="color: #ffd700; margin-bottom: 20px;">💸 ВЫВОД СРЕДСТВ</h2>
             
             <div style="margin: 20px 0;">
-                <p style="color: #ffd700; margin-bottom: 15px;">Доступно для вывода: <span id="withdraw-balance" style="color: #00ff00; font-weight: bold;">1000</span> ⭐</p>
+                <p style="color: #ffd700; margin-bottom: 15px;">Доступно для вывода: <span id="withdraw-balance" style="color: #00ff00; font-weight: bold;">0</span> ⭐</p>
                 
                 <input type="number" id="withdraw-amount" class="bet-input" placeholder="Сумма вывода" min="100" value="100" style="width: 100%; max-width: 300px; margin: 10px auto;">
                 
@@ -1240,9 +1315,56 @@
         </div>
     </div>
 
+    <!-- Модальное окно бонусов -->
+    <div id="bonusModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="hideModal('bonusModal')">×</button>
+            <h2 style="color: #ffd700; margin-bottom: 20px;">🎁 БОНУСЫ И ПРОМОКОДЫ</h2>
+            
+            <div style="margin: 20px 0;">
+                <!-- Кешбек (не работает) -->
+                <div class="bonus-card" style="opacity: 0.6; cursor: not-allowed;">
+                    <h3 style="color: #ffd700;">💎 КЕШБЕК</h3>
+                    <p style="color: #ff9999; font-size: 14px; margin: 10px 0;">
+                        Получайте возврат 5% от проигранной суммы
+                    </p>
+                    <div style="color: #e74c3c; font-weight: bold; font-size: 12px; margin-top: 10px;">
+                        ❌ Временно не работает
+                    </div>
+                </div>
+                
+                <!-- Промокоды -->
+                <div class="bonus-card">
+                    <h3 style="color: #00ff00;">🎫 ПРОМОКОДЫ</h3>
+                    <p style="color: #ffd700; font-size: 14px; margin: 10px 0;">
+                        Введите промокод для получения бонуса
+                    </p>
+                    
+                    <input type="text" id="promo-code" class="promo-input" placeholder="Введите промокод" maxlength="20">
+                    
+                    <button class="btn btn-success" onclick="activatePromoCode()" style="margin-top: 15px; width: 100%;">
+                        АКТИВИРОВАТЬ ПРОМОКОД
+                    </button>
+                </div>
+                
+                <!-- Полученные промокоды -->
+                <div style="margin-top: 30px;">
+                    <h3 style="color: #ffd700; margin-bottom: 15px;">Активированные промокоды:</h3>
+                    <div id="activated-promos" style="color: #00ff00; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; min-height: 50px;">
+                        <p style="color: #999; text-align: center;">Нет активированных промокодов</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px; color: #ff9999; font-size: 12px; text-align: center;">
+                    ⚠️ Промокоды можно получить у администратора в боте
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
-        let userBalance = 1000;
+        let userBalance = 0; // Начинаем с 0
         let gameHistory = {
             crash: { games: 0, wins: 0, losses: 0, profit: 0 },
             mines: { games: 0, wins: 0, losses: 0, profit: 0 },
@@ -1250,6 +1372,8 @@
             slots: { games: 0, wins: 0, losses: 0, profit: 0 },
             dice: { games: 0, wins: 0, losses: 0, profit: 0 }
         };
+        
+        let activatedPromoCodes = [];
         
         // CRASH переменные
         let crashInterval;
@@ -1278,6 +1402,9 @@
 
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
         document.addEventListener('DOMContentLoaded', function() {
+            // Скрываем загрузку сразу
+            document.getElementById('loader').style.display = 'none';
+            
             createStars();
             loadFromStorage();
             updateBalanceDisplay();
@@ -1335,7 +1462,7 @@
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
             notification.className = 'notification';
-            notification.textContent = '💰 BezdarMoney: ' + message;
+            notification.innerHTML = '💰 BezdarMoney: ' + message;
             
             if (type === 'error') {
                 notification.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
@@ -1461,8 +1588,14 @@
             plane.style.bottom = '20px';
             plane.style.background = 'linear-gradient(45deg, #3498db, #1e90ff)';
             
-            // Генерация точки взрыва (от 1.2x до 10x)
-            crashExplodePoint = 1.2 + Math.random() * 8.8;
+            // Генерация точки взрыва (чаще падает, 1.2x - 3x в 80% случаев)
+            const random = Math.random();
+            if (random < 0.8) {
+                crashExplodePoint = 1.2 + Math.random() * 1.8; // 80% шанс на взрыв до 3x
+            } else {
+                crashExplodePoint = 3.0 + Math.random() * 7.0; // 20% шанс на взрыв до 10x
+            }
+            
             crashMultiplier = 1.0;
             
             // Активация кнопок
@@ -1629,32 +1762,6 @@
             const cell = document.querySelector(`.mine-cell[data-index="${index}"]`);
             minesGrid[index].revealed = true;
             
-            // Логика: на 3 или 4 шаге обязательно мина
-            let forceMine = false;
-            if (minesStep === 3 || minesStep === 4) {
-                // Проверяем, есть ли уже мины среди открытых
-                const hasMine = minesGrid.some((cell, i) => cell.revealed && cell.isMine);
-                if (!hasMine) {
-                    forceMine = true;
-                } else if (minesStep === 4) {
-                    // Если на 3 шаге не было мины, на 4 обязательно
-                    const hasMineAt3 = minesGrid.some((cell, i) => cell.revealed && cell.isMine);
-                    if (!hasMineAt3) {
-                        forceMine = true;
-                    }
-                }
-            }
-            
-            // Если нужно форсировать мину, находим первую закрытую ячейку и делаем её миной
-            if (forceMine) {
-                for (let i = 0; i < 25; i++) {
-                    if (!minesGrid[i].revealed && !minesGrid[i].isMine) {
-                        minesGrid[i].isMine = true;
-                        break;
-                    }
-                }
-            }
-            
             if (minesGrid[index].isMine) {
                 cell.className = 'mine-cell mine';
                 cell.textContent = '💣';
@@ -1767,18 +1874,18 @@
             wheel.style.animation = 'spin 0.5s linear infinite';
             ball.style.animation = 'ballOrbit 0.5s linear infinite';
             
-            // Определяем результат
+            // Определяем результат с уменьшенными шансами
             setTimeout(() => {
                 const random = Math.random() * 100;
                 let resultColor, multiplier;
                 
-                if (random < 2) { // 2% шанс на зелёное
+                if (random < 1) { // 1% шанс на зелёное (было 2%)
                     resultColor = 'green';
                     multiplier = 36;
-                } else if (random < 49) { // 47% шанс на красное
+                } else if (random < 46) { // 45% шанс на красное (было 47%)
                     resultColor = 'red';
                     multiplier = 2;
-                } else { // 51% шанс на чёрное
+                } else { // 54% шанс на чёрное (было 51%)
                     resultColor = 'black';
                     multiplier = 2;
                 }
@@ -1893,33 +2000,33 @@
             
             // Проверка джекпота (5 семёрок)
             if (results.every(symbol => symbol === '7️⃣')) {
-                winMultiplier = 1000;
-                winMessage = '🎰 ДЖЕКПОТ! x1000 🎰';
+                winMultiplier = 100;
+                winMessage = '🎰 ДЖЕКПОТ! x100 🎰';
             }
             // Проверка 4 семёрок
             else if (results.filter(symbol => symbol === '7️⃣').length >= 4) {
-                winMultiplier = 100;
-                winMessage = '4 СЕМЁРКИ! x100';
+                winMultiplier = 20;
+                winMessage = '4 СЕМЁРКИ! x20';
             }
             // Проверка 3 семёрок
             else if (results.filter(symbol => symbol === '7️⃣').length >= 3) {
-                winMultiplier = 20;
-                winMessage = '3 СЕМЁРКИ! x20';
+                winMultiplier = 5;
+                winMessage = '3 СЕМЁРКИ! x5';
             }
             // Проверка 5 одинаковых
             else if (new Set(results).size === 1) {
-                winMultiplier = 50;
-                winMessage = '5 ОДИНАКОВЫХ! x50';
+                winMultiplier = 10;
+                winMessage = '5 ОДИНАКОВЫХ! x10';
             }
             // Проверка 3+ вишен
             else if (results.filter(symbol => symbol === '🍒').length >= 3) {
-                winMultiplier = 10;
-                winMessage = '3+ ВИШНИ! x10';
+                winMultiplier = 3;
+                winMessage = '3+ ВИШНИ! x3';
             }
             // Проверка 3+ звёзд
             else if (results.filter(symbol => symbol === '⭐').length >= 3) {
-                winMultiplier = 15;
-                winMessage = '3+ ЗВЕЗДЫ! x15';
+                winMultiplier = 5;
+                winMessage = '3+ ЗВЕЗДЫ! x5';
             }
             
             if (winMultiplier > 0) {
@@ -2005,11 +2112,11 @@
                 let winMultiplier = 0;
                 
                 if (difference === 0) {
-                    winMultiplier = 99; // Точное попадание
+                    winMultiplier = 4; // Точное попадание x4 (было x99)
                 } else if (difference <= 5) {
-                    winMultiplier = 5; // ±5 чисел
+                    winMultiplier = 2; // ±5 чисел x2 (было x5)
                 } else if (difference <= 10) {
-                    winMultiplier = 2; // ±10 чисел
+                    winMultiplier = 1.5; // ±10 чисел x1.5 (было x2)
                 }
                 
                 if (winMultiplier > 0) {
@@ -2082,6 +2189,71 @@
             console.log('⏰ Время:', new Date().toLocaleString());
         }
 
+        // ==================== БОНУСЫ И ПРОМОКОДЫ ====================
+        function activatePromoCode() {
+            const promoCode = document.getElementById('promo-code').value.trim().toUpperCase();
+            
+            if (!promoCode) {
+                showNotification('Введите промокод', 'error');
+                return;
+            }
+            
+            if (promoCode.length < 5) {
+                showNotification('Промокод должен быть не менее 5 символов', 'error');
+                return;
+            }
+            
+            if (activatedPromoCodes.includes(promoCode)) {
+                showNotification('Этот промокод уже активирован', 'warning');
+                return;
+            }
+            
+            // В реальном проекте здесь проверка с сервером
+            // Для демо: определенные промокоды
+            let bonusAmount = 0;
+            
+            if (promoCode === 'WELCOME100') {
+                bonusAmount = 100;
+            } else if (promoCode === 'BEZDAR500') {
+                bonusAmount = 500;
+            } else if (promoCode === 'LUCK777') {
+                bonusAmount = 777;
+            } else {
+                // Случайный бонус для других кодов
+                bonusAmount = Math.floor(Math.random() * 300) + 50;
+            }
+            
+            // Добавляем бонус
+            updateBalance(bonusAmount);
+            activatedPromoCodes.push(promoCode);
+            
+            // Сохраняем
+            saveToStorage();
+            
+            // Обновляем список
+            updateActivatedPromos();
+            
+            // Показываем уведомление
+            showWinAnimation('+' + bonusAmount + '⭐');
+            showNotification('Промокод активирован! +' + bonusAmount + '⭐', 'success');
+            
+            // Очищаем поле
+            document.getElementById('promo-code').value = '';
+        }
+
+        function updateActivatedPromos() {
+            const container = document.getElementById('activated-promos');
+            if (activatedPromoCodes.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center;">Нет активированных промокодов</p>';
+            } else {
+                container.innerHTML = activatedPromoCodes.map(code => 
+                    `<div style="margin: 5px 0; padding: 5px 10px; background: rgba(0,255,0,0.1); border-radius: 5px; border-left: 3px solid #00ff00;">
+                        🎫 ${code}
+                    </div>`
+                ).join('');
+            }
+        }
+
         // ==================== СТАТИСТИКА ====================
         function showStats() {
             // Скрыть все окна
@@ -2130,7 +2302,8 @@
         function saveToStorage() {
             const data = {
                 balance: userBalance,
-                gameHistory: gameHistory
+                gameHistory: gameHistory,
+                activatedPromoCodes: activatedPromoCodes
             };
             localStorage.setItem('bezdarMoneyData', JSON.stringify(data));
         }
@@ -2139,7 +2312,7 @@
             const saved = localStorage.getItem('bezdarMoneyData');
             if (saved) {
                 const data = JSON.parse(saved);
-                userBalance = data.balance || 1000;
+                userBalance = data.balance || 0; // Начинаем с 0
                 gameHistory = data.gameHistory || {
                     crash: { games: 0, wins: 0, losses: 0, profit: 0 },
                     mines: { games: 0, wins: 0, losses: 0, profit: 0 },
@@ -2147,392 +2320,11 @@
                     slots: { games: 0, wins: 0, losses: 0, profit: 0 },
                     dice: { games: 0, wins: 0, losses: 0, profit: 0 }
                 };
+                activatedPromoCodes = data.activatedPromoCodes || [];
+                
+                updateActivatedPromos();
             }
         }
-     // ==================== ИНТЕГРАЦИЯ С TELEGRAM БОТОМ ====================
-
-const TELEGRAM_BOT_USERNAME = "BezdarMoneyBot";
-const BOT_LINK = `https://t.me/${TELEGRAM_BOT_USERNAME}`;
-
-// Генерация/получение User ID
-function getUserData() {
-    let userId = localStorage.getItem('bezdarUserId');
-    let lastBalanceCheck = localStorage.getItem('lastBalanceCheck') || 0;
-    
-    if (!userId) {
-        // Генерируем новый ID вида: telegram_123456789_timestamp
-        const timestamp = Date.now();
-        const random = Math.floor(Math.random() * 1000000);
-        userId = `telegram_${timestamp}_${random}`;
-        localStorage.setItem('bezdarUserId', userId);
-        
-        // Показываем уведомление
-        showNotification(`🆔 Ваш ID создан: ${userId}`, 'info');
-    }
-    
-    return {
-        userId: userId,
-        lastCheck: parseInt(lastBalanceCheck)
-    };
-}
-
-// Функция для обновления баланса с "сервера"
-async function fetchUserBalance(userId) {
-    try {
-        // В реальном проекте здесь будет fetch к вашему API
-        // const response = await fetch(`https://ваш-сервер.com/api/balance/${userId}`);
-        // const data = await response.json();
-        // return data.balance || 0;
-        
-        // Для демо - возвращаем случайное увеличение баланса
-        // Убираем в продакшене!
-        const storedBalance = parseInt(localStorage.getItem(`balance_${userId}`)) || userBalance;
-        const randomIncrement = Math.random() < 0.3 ? Math.floor(Math.random() * 1000) : 0;
-        return storedBalance + randomIncrement;
-        
-    } catch (error) {
-        console.error('Ошибка получения баланса:', error);
-        return userBalance;
-    }
-}
-
-// Автоматическая проверка обновлений баланса
-let balanceCheckInterval = null;
-
-function startBalanceChecker() {
-    if (balanceCheckInterval) {
-        clearInterval(balanceCheckInterval);
-    }
-    
-    const userData = getUserData();
-    
-    balanceCheckInterval = setInterval(async () => {
-        const serverBalance = await fetchUserBalance(userData.userId);
-        const currentTime = Date.now();
-        
-        if (serverBalance > userBalance) {
-            const difference = serverBalance - userBalance;
-            userBalance = serverBalance;
-            updateBalanceDisplay();
-            saveToStorage();
-            
-            // Показываем анимацию пополнения
-            showNotification(`💰 Баланс пополнен на ${difference}⭐!`, 'success');
-            showWinAnimation(`+${difference}⭐`);
-            
-            // Сохраняем время последней проверки
-            localStorage.setItem('lastBalanceCheck', currentTime.toString());
-            
-            // Останавливаем проверку через 2 минуты
-            setTimeout(() => {
-                if (balanceCheckInterval) {
-                    clearInterval(balanceCheckInterval);
-                    balanceCheckInterval = null;
-                }
-            }, 120000);
-        }
-        
-        // Обновляем время последней проверки каждые 30 секунд
-        if (currentTime - userData.lastCheck > 30000) {
-            localStorage.setItem('lastBalanceCheck', currentTime.toString());
-        }
-        
-    }, 5000); // Проверка каждые 5 секунд
-}
-
-// Открытие бота для пополнения
-function openBotForDeposit() {
-    const userData = getUserData();
-    
-    // Создаем deep link для бота
-    const startParam = `deposit_${userData.userId}`;
-    const botUrl = `${BOT_LINK}?start=${startParam}`;
-    
-    // Открываем бота
-    window.open(botUrl, '_blank', 'noopener,noreferrer');
-    
-    // Показываем инструкцию
-    showNotification(`
-        📱 <b>Инструкция по пополнению:</b><br><br>
-        1. В боте нажмите "Пополнить баланс"<br>
-        2. Выберите сумму<br>
-        3. Нажмите "Оплатить N ⭐"<br>
-        4. Подтвердите оплату звёздами<br>
-        5. Вернитесь на сайт и подождите 5-10 секунд<br>
-        6. Баланс обновится автоматически
-    `, 'info');
-    
-    // Запускаем проверку обновлений
-    startBalanceChecker();
-}
-
-// Открытие бота для вывода
-function openBotForWithdraw() {
-    const botUrl = `${BOT_LINK}?start=withdraw`;
-    window.open(botUrl, '_blank', 'noopener,noreferrer');
-    
-    showNotification('📱 Открываю бота для вывода средств...', 'info');
-}
-
-// Обновление модального окна пополнения
-function updateDepositModal() {
-    const depositModal = document.getElementById('depositModal');
-    if (!depositModal) return;
-    
-    const modalContent = depositModal.querySelector('.modal-content');
-    if (!modalContent) return;
-    
-    const userData = getUserData();
-    
-    const newContent = `
-        <button class="modal-close" onclick="hideModal('depositModal')">×</button>
-        <h2 style="color: #00ff00; margin-bottom: 20px;">💰 ПОПОЛНЕНИЕ БАЛАНСА</h2>
-        
-        <div style="margin: 20px 0;">
-            <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                <p style="color: #ffd700; margin-bottom: 10px;">
-                    📊 <b>Текущий баланс:</b> 
-                    <span id="modal-balance" style="color: #00ff00; font-weight: bold;">${userBalance}</span> ⭐
-                </p>
-                <p style="color: #00ff00; font-size: 14px;">
-                    🆔 <b>Ваш ID:</b> 
-                    <code style="background: rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 4px; cursor: pointer;" 
-                          onclick="copyUserId()" title="Нажмите чтобы скопировать">
-                        ${userData.userId}
-                    </code>
-                </p>
-            </div>
-            
-            <div style="background: rgba(138, 43, 226, 0.2); padding: 20px; border-radius: 10px; border: 2px solid #ffd700; margin: 20px 0;">
-                <p style="color: #00ff00; font-weight: bold; margin-bottom: 15px; font-size: 18px;">
-                    ⚡ ПОПОЛНЕНИЕ ЧЕРЕЗ TELEGRAM БОТА
-                </p>
-                
-                <div style="color: #ffd700; margin-bottom: 20px;">
-                    <p><b>📱 Шаг 1:</b> Перейдите в нашего бота:</p>
-                    <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin: 10px 0; border: 2px solid #4a4aff; text-align: center;">
-                        <span style="color: #00ff00; font-weight: bold; font-size: 18px;">@${TELEGRAM_BOT_USERNAME}</span>
-                    </div>
-                    
-                    <p><b>💎 Шаг 2:</b> В боте нажмите "Пополнить баланс"</p>
-                    <p><b>💰 Шаг 3:</b> Выберите сумму и нажмите "Оплатить N ⭐"</p>
-                    <p><b>✅ Шаг 4:</b> Подтвердите оплату звёздами Telegram</p>
-                    <p><b>🔄 Шаг 5:</b> Вернитесь на сайт - баланс обновится автоматически</p>
-                </div>
-                
-                <div style="text-align: center; margin: 25px 0;">
-                    <div style="display: inline-block; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); border: 3px solid #ffd700;">
-                        <div style="font-size: 14px; color: #000; margin-bottom: 10px; font-weight: bold;">
-                            📲 Нажмите кнопку ниже или отсканируйте
-                        </div>
-                        <div style="width: 160px; height: 160px; background: #f8f8f8; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto; border: 3px solid #8a2be2;">
-                            <div style="font-size: 50px; margin-bottom: 10px;">🤖</div>
-                            <div style="color: #333; font-size: 16px; font-weight: bold;">@${TELEGRAM_BOT_USERNAME}</div>
-                            <div style="color: #666; font-size: 12px; margin-top: 5px;">Telegram Bot</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <button class="btn btn-success" onclick="openBotForDeposit()" 
-                    style="margin-top: 20px; width: 100%; font-size: 18px; padding: 18px; background: linear-gradient(45deg, #27ae60, #2ecc71); border: 3px solid #ffd700; box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);">
-                📱 ПЕРЕЙТИ В TELEGRAM БОТА
-            </button>
-            
-            <div style="margin-top: 20px; color: #ff9999; font-size: 12px; text-align: center; background: rgba(255,0,0,0.1); padding: 10px; border-radius: 5px;">
-                ⚠️ <b>Важно:</b> После оплаты в боте вернитесь на сайт и обновите страницу (F5)
-            </div>
-            
-            <div style="margin-top: 15px; text-align: center;">
-                <button class="btn" onclick="startBalanceChecker()" 
-                        style="background: linear-gradient(45deg, #3498db, #1e90ff); font-size: 14px; padding: 10px 20px;">
-                    🔄 Проверить обновление баланса
-                </button>
-            </div>
-        </div>
-    `;
-    
-    modalContent.innerHTML = newContent;
-}
-
-// Обновление модального окна вывода
-function updateWithdrawModal() {
-    const withdrawModal = document.getElementById('withdrawModal');
-    if (!withdrawModal) return;
-    
-    const modalContent = withdrawModal.querySelector('.modal-content');
-    if (!modalContent) return;
-    
-    const newContent = `
-        <button class="modal-close" onclick="hideModal('withdrawModal')">×</button>
-        <h2 style="color: #ffd700; margin-bottom: 20px;">💸 ВЫВОД СРЕДСТВ</h2>
-        
-        <div style="margin: 20px 0;">
-            <p style="color: #ffd700; margin-bottom: 15px;">
-                📊 <b>Доступно для вывода:</b> 
-                <span id="withdraw-balance" style="color: #00ff00; font-weight: bold;">${userBalance}</span> ⭐
-            </p>
-            
-            ${userBalance < 100 ? `
-            <div style="background: rgba(231, 76, 60, 0.2); padding: 15px; border-radius: 10px; margin: 20px 0; border: 2px solid #e74c3c;">
-                <p style="color: #ff9999; font-weight: bold; margin-bottom: 10px;">
-                    ❌ Недостаточно средств для вывода
-                </p>
-                <p style="color: #ffd700;">
-                    Минимальная сумма вывода: <b>100 ⭐</b><br>
-                    Ваш баланс: <b>${userBalance} ⭐</b>
-                </p>
-            </div>
-            ` : ''}
-            
-            <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #ffd700;">
-                <p style="color: #ff9999; font-size: 14px; margin-bottom: 15px;">
-                    ⚠️ <b>Вывод осуществляется через Telegram бота</b>
-                </p>
-                
-                <div style="color: #00ff00; margin-bottom: 20px;">
-                    <p><b>Для вывода средств:</b></p>
-                    <p>1. Перейдите в нашего бота: <b>@${TELEGRAM_BOT_USERNAME}</b></p>
-                    <p>2. Нажмите "Вывод средств"</p>
-                    <p>3. Введите сумму и ваш Telegram username</p>
-                    <p>4. Подтвердите заявку</p>
-                    <p>5. Администратор свяжется с вами в течение 24 часов</p>
-                </div>
-                
-                <div style="color: #ffd700; margin-top: 20px;">
-                    <p><b>📱 Бот для вывода:</b></p>
-                    <div style="background: rgba(138, 43, 226, 0.3); padding: 12px; border-radius: 8px; margin: 10px 0; text-align: center; border: 2px solid #ffd700;">
-                        <span style="color: #00ff00; font-weight: bold; font-size: 18px;">@${TELEGRAM_BOT_USERNAME}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <button class="btn btn-warning" onclick="openBotForWithdraw()" 
-                    style="margin-top: 20px; width: 100%; font-size: 18px; padding: 18px; ${userBalance < 100 ? 'opacity: 0.6; cursor: not-allowed;' : ''}"
-                    ${userBalance < 100 ? 'disabled' : ''}>
-                📱 ПЕРЕЙТИ В БОТА ДЛЯ ВЫВОДА
-            </button>
-            
-            <div style="margin-top: 20px; color: #ff9999; font-size: 12px; text-align: center;">
-                ⚠️ Минимальная сумма вывода: 100⭐ | Вывод обрабатывается вручную администратором
-            </div>
-        </div>
-    `;
-    
-    modalContent.innerHTML = newContent;
-}
-
-// Функция копирования User ID
-function copyUserId() {
-    const userData = getUserData();
-    navigator.clipboard.writeText(userData.userId).then(() => {
-        showNotification('✅ ID скопирован в буфер обмена!', 'success');
-    }).catch(err => {
-        console.error('Ошибка копирования:', err);
-        showNotification('❌ Не удалось скопировать ID', 'error');
-    });
-}
-
-// Добавление кнопки копирования ID в шапку
-function addCopyIdButton() {
-    const header = document.querySelector('.header .user-info');
-    if (header && !document.querySelector('#copy-id-btn')) {
-        const copyBtn = document.createElement('button');
-        copyBtn.id = 'copy-id-btn';
-        copyBtn.className = 'btn';
-        copyBtn.style.marginLeft = '10px';
-        copyBtn.style.background = 'linear-gradient(45deg, #3498db, #1e90ff)';
-        copyBtn.innerHTML = '📋 ID';
-        copyBtn.title = 'Скопировать ID для бота';
-        copyBtn.onclick = copyUserId;
-        header.appendChild(copyBtn);
-    }
-}
-
-// Инициализация Telegram интеграции
-function initTelegramIntegration() {
-    // Получаем данные пользователя
-    const userData = getUserData();
-    console.log('👤 User ID:', userData.userId);
-    
-    // Обновляем модальные окна
-    updateDepositModal();
-    updateWithdrawModal();
-    
-    // Добавляем кнопку копирования ID
-    addCopyIdButton();
-    
-    // Периодическая проверка баланса
-    setInterval(() => {
-        updateBalanceDisplay();
-    }, 60000); // Каждую минуту
-    
-    // Показываем инструкцию при первом посещении
-    const firstVisit = !localStorage.getItem('bezdarFirstVisit');
-    if (firstVisit) {
-        setTimeout(() => {
-            showNotification(`
-                💰 <b>Добро пожаловать в BezdarMoney Casino!</b><br><br>
-                Для пополнения баланса:<br>
-                1. Нажмите "Пополнить"<br>
-                2. Перейдите в Telegram бота<br>
-                3. Оплатите звёздами<br>
-                4. Баланс появится на сайте
-            `, 'info');
-            localStorage.setItem('bezdarFirstVisit', 'true');
-        }, 3000);
-    }
-}
-
-// Переопределение функции показа модальных окон
-const originalShowModal = showModal;
-showModal = function(modalId) {
-    originalShowModal(modalId);
-    
-    if (modalId === 'depositModal') {
-        setTimeout(() => {
-            updateDepositModal();
-            startBalanceChecker();
-        }, 100);
-    } else if (modalId === 'withdrawModal') {
-        setTimeout(() => {
-            updateWithdrawModal();
-        }, 100);
-    }
-};
-
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(initTelegramIntegration, 1500);
-    
-    // Обновляем баланс каждые 30 секунд
-    setInterval(() => {
-        updateBalanceDisplay();
-    }, 30000);
-});
-
-// Функция для ручного обновления баланса (можно вызвать из консоли)
-window.updateBalanceManually = async function() {
-    const userData = getUserData();
-    const serverBalance = await fetchUserBalance(userData.userId);
-    
-    if (serverBalance !== userBalance) {
-        const difference = serverBalance - userBalance;
-        userBalance = serverBalance;
-        updateBalanceDisplay();
-        saveToStorage();
-        
-        if (difference > 0) {
-            showNotification(`✅ Баланс обновлен вручную! +${difference}⭐`, 'success');
-        } else {
-            showNotification(`✅ Баланс обновлен: ${userBalance}⭐`, 'info');
-        }
-    } else {
-        showNotification('ℹ️ Баланс не изменился', 'info');
-    }
-    
-    return userBalance;
-};
     </script>
 </body>
 </html>
