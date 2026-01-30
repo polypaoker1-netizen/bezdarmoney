@@ -11,31 +11,45 @@ class Database:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Таблица пользователей
+        # Таблица пользователей (баланс в звездах)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
                 username TEXT,
                 first_name TEXT,
                 last_name TEXT,
-                balance REAL DEFAULT 0,
-                total_deposited REAL DEFAULT 0,
-                total_withdrawn REAL DEFAULT 0,
+                stars INTEGER DEFAULT 0, -- баланс в звездах
+                total_deposited_stars INTEGER DEFAULT 0,
+                total_withdrawn_stars INTEGER DEFAULT 0,
                 games_played INTEGER DEFAULT 0,
                 registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
-        # Таблица транзакций
+        # Таблица транзакций (все суммы в звездах)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
-                type TEXT, -- 'deposit', 'withdrawal', 'game_win', 'game_loss'
-                amount REAL,
+                type TEXT, -- 'deposit_stars', 'withdrawal_stars', 'game_win', 'game_loss'
+                stars INTEGER, -- количество звезд
                 description TEXT,
                 telegram_payment_id TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (user_id)
+            )
+        ''')
+        
+        # Таблица заявок на вывод звезд
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                stars INTEGER,
+                status TEXT DEFAULT 'pending', -- pending, approved, rejected, completed
+                admin_id INTEGER,
+                processed_date TIMESTAMP,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (user_id)
             )
@@ -78,30 +92,31 @@ class Database:
         conn.close()
         return user
     
-    def update_balance(self, user_id, amount):
+    def update_stars_balance(self, user_id, stars):
+        """Обновление баланса звезд"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (amount, user_id))
+        cursor.execute('UPDATE users SET stars = stars + ? WHERE user_id = ?', (stars, user_id))
         
-        # Обновляем total_deposited или total_withdrawn
-        if amount > 0:
-            cursor.execute('UPDATE users SET total_deposited = total_deposited + ? WHERE user_id = ?', (amount, user_id))
+        # Обновляем статистику
+        if stars > 0:
+            cursor.execute('UPDATE users SET total_deposited_stars = total_deposited_stars + ? WHERE user_id = ?', (stars, user_id))
         else:
-            cursor.execute('UPDATE users SET total_withdrawn = total_withdrawn + ? WHERE user_id = ?', (abs(amount), user_id))
+            cursor.execute('UPDATE users SET total_withdrawn_stars = total_withdrawn_stars + ? WHERE user_id = ?', (abs(stars), user_id))
         
         conn.commit()
         conn.close()
         return True
     
-    def add_transaction(self, user_id, transaction_type, amount, description, telegram_payment_id=None):
+    def add_transaction(self, user_id, transaction_type, stars, description, telegram_payment_id=None):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT INTO transactions (user_id, type, amount, description, telegram_payment_id)
+            INSERT INTO transactions (user_id, type, stars, description, telegram_payment_id)
             VALUES (?, ?, ?, ?, ?)
-        ''', (user_id, transaction_type, amount, description, telegram_payment_id))
+        ''', (user_id, transaction_type, stars, description, telegram_payment_id))
         
         conn.commit()
         conn.close()
@@ -114,13 +129,13 @@ class Database:
         user = cursor.fetchone()
         
         cursor.execute('''
-            SELECT COUNT(*), SUM(amount) FROM transactions 
-            WHERE user_id = ? AND type = 'deposit'
+            SELECT COUNT(*), SUM(stars) FROM transactions 
+            WHERE user_id = ? AND type = 'deposit_stars'
         ''', (user_id,))
         deposit_stats = cursor.fetchone()
         
         cursor.execute('''
-            SELECT COUNT(*), SUM(amount) FROM transactions 
+            SELECT COUNT(*), SUM(stars) FROM transactions 
             WHERE user_id = ? AND type LIKE 'game_%'
         ''', (user_id,))
         game_stats = cursor.fetchone()
@@ -131,22 +146,67 @@ class Database:
             return {
                 'user_id': user[0],
                 'username': user[1],
-                'balance': user[4],
-                'total_deposited': user[5],
-                'total_withdrawn': user[6],
+                'stars': user[4],  # баланс в звездах
+                'total_deposited_stars': user[5],
+                'total_withdrawn_stars': user[6],
                 'games_played': user[7],
                 'registration_date': user[8],
                 'deposits_count': deposit_stats[0] or 0,
-                'deposits_total': deposit_stats[1] or 0,
+                'deposits_total_stars': deposit_stats[1] or 0,
                 'games_count': game_stats[0] or 0
             }
         return None
+    
+    def create_withdrawal_request(self, user_id, stars):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO withdrawal_requests (user_id, stars, status)
+            VALUES (?, ?, 'pending')
+        ''', (user_id, stars))
+        
+        request_id = cursor.lastrowid
+        
+        conn.commit()
+        conn.close()
+        return request_id
+    
+    def get_pending_withdrawals(self):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT wr.*, u.username, u.first_name 
+            FROM withdrawal_requests wr
+            JOIN users u ON wr.user_id = u.user_id
+            WHERE wr.status = 'pending'
+            ORDER BY wr.timestamp
+        ''')
+        
+        withdrawals = cursor.fetchall()
+        conn.close()
+        return withdrawals
+    
+    def update_withdrawal_status(self, request_id, status, admin_id=None):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE withdrawal_requests 
+            SET status = ?, admin_id = ?, processed_date = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (status, admin_id, request_id))
+        
+        conn.commit()
+        conn.close()
+        return True
     
     def get_all_users(self):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        cursor.execute('SELECT * FROM users ORDER BY balance DESC')
+        cursor.execute('SELECT * FROM users ORDER BY stars DESC')
         users = cursor.fetchall()
         
         conn.close()
@@ -159,22 +219,22 @@ class Database:
         cursor.execute('SELECT COUNT(*) FROM users')
         total_users = cursor.fetchone()[0]
         
-        cursor.execute('SELECT SUM(balance) FROM users')
-        total_balance = cursor.fetchone()[0] or 0
+        cursor.execute('SELECT SUM(stars) FROM users')
+        total_stars = cursor.fetchone()[0] or 0
         
-        cursor.execute('SELECT SUM(total_deposited) FROM users')
-        total_deposited = cursor.fetchone()[0] or 0
+        cursor.execute('SELECT SUM(total_deposited_stars) FROM users')
+        total_deposited_stars = cursor.fetchone()[0] or 0
         
-        cursor.execute('SELECT SUM(total_withdrawn) FROM users')
-        total_withdrawn = cursor.fetchone()[0] or 0
+        cursor.execute('SELECT SUM(total_withdrawn_stars) FROM users')
+        total_withdrawn_stars = cursor.fetchone()[0] or 0
         
         conn.close()
         
         return {
             'total_users': total_users,
-            'total_balance': total_balance,
-            'total_deposited': total_deposited,
-            'total_withdrawn': total_withdrawn
+            'total_stars': total_stars,
+            'total_deposited_stars': total_deposited_stars,
+            'total_withdrawn_stars': total_withdrawn_stars
         }
     
     def log_admin_action(self, admin_id, action, target_user_id, details):
@@ -201,22 +261,6 @@ class Database:
         conn.commit()
         conn.close()
     
-    def search_users(self, search_term):
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Ищем по user_id или username
-        try:
-            user_id = int(search_term)
-            cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
-        except ValueError:
-            cursor.execute('SELECT * FROM users WHERE username LIKE ? OR first_name LIKE ?', 
-                          (f'%{search_term}%', f'%{search_term}%'))
-        
-        users = cursor.fetchall()
-        conn.close()
-        return users
-    
     def get_recent_transactions(self, limit=10):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -226,20 +270,6 @@ class Database:
             LEFT JOIN users u ON t.user_id = u.user_id
             ORDER BY t.timestamp DESC LIMIT ?
         ''', (limit,))
-        
-        transactions = cursor.fetchall()
-        conn.close()
-        return transactions
-    
-    def get_user_transactions(self, user_id, limit=20):
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT * FROM transactions 
-            WHERE user_id = ? 
-            ORDER BY timestamp DESC LIMIT ?
-        ''', (user_id, limit))
         
         transactions = cursor.fetchall()
         conn.close()
