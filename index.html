@@ -611,6 +611,208 @@
             }
         }
     </style>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+    // Telegram Web App
+    let tg = window.Telegram.WebApp;
+    
+    // Глобальные переменные для пользователя
+    let tgUser = null;
+    let isAuthorized = false;
+    
+    // Проверяем, загружен ли Telegram Web App
+    function initTelegram() {
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            tgUser = tg.initDataUnsafe.user;
+            isAuthorized = true;
+            console.log('Telegram user authorized:', tgUser);
+            
+            // Показываем пользователю
+            updateUserInfo();
+            
+            // Запрашиваем баланс у бота
+            loadUserBalance();
+            
+            // Разворачиваем приложение на весь экран
+            tg.expand();
+            
+            // Меняем кнопки в хедере
+            updateHeaderForTelegram();
+        } else {
+            console.log('Not in Telegram Web App');
+            showTelegramLogin();
+        }
+    }
+    
+    // Обновляем информацию о пользователе
+    function updateUserInfo() {
+        if (!tgUser) return;
+        
+        const userInfoDiv = document.querySelector('.user-info');
+        if (userInfoDiv) {
+            // Добавляем аватар пользователя
+            const avatarHtml = `
+                <div style="display: flex; align-items: center; gap: 10px; margin-right: 15px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden;">
+                        <img src="${tgUser.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" 
+                             style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">${tgUser.first_name || 'Пользователь'}</div>
+                        <div style="font-size: 12px; color: #8a94a6;">@${tgUser.username || 'без username'}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Добавляем аватар перед балансом
+            const balanceCard = userInfoDiv.querySelector('.balance-card');
+            if (balanceCard) {
+                balanceCard.insertAdjacentHTML('beforebegin', avatarHtml);
+            }
+        }
+    }
+    
+    // Обновляем хедер для Telegram
+    function updateHeaderForTelegram() {
+        const header = document.querySelector('header');
+        if (header) {
+            header.style.background = 'rgba(26, 26, 46, 0.98)';
+            header.style.backdropFilter = 'blur(20px)';
+        }
+        
+        // Добавляем кнопку закрытия
+        const headerContent = document.querySelector('.header-content');
+        if (headerContent) {
+            const closeBtn = `
+                <button id="tgCloseBtn" style="
+                    background: rgba(231, 76, 60, 0.2);
+                    color: #e74c3c;
+                    border: 1px solid rgba(231, 76, 60, 0.3);
+                    border-radius: 10px;
+                    padding: 8px 15px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                    transition: all 0.3s;
+                ">
+                    <i class="fas fa-times"></i> Закрыть
+                </button>
+            `;
+            
+            headerContent.insertAdjacentHTML('beforeend', closeBtn);
+            
+            document.getElementById('tgCloseBtn').addEventListener('click', () => {
+                tg.close();
+            });
+        }
+    }
+    
+    // Показываем кнопку входа через Telegram
+    function showTelegramLogin() {
+        const gamesSection = document.querySelector('.games-section');
+        if (!gamesSection) return;
+        
+        const loginSection = document.createElement('div');
+        loginSection.className = 'login-section';
+        loginSection.innerHTML = `
+            <div style="text-align: center; margin: 40px 0; padding: 40px 20px; background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); border-radius: 20px; border: 1px solid rgba(240, 185, 11, 0.2);">
+                <h2 style="color: #f0b90b; margin-bottom: 20px; font-size: 32px;">
+                    <i class="fab fa-telegram"></i> Вход через Telegram
+                </h2>
+                <p style="color: #8a94a6; margin-bottom: 30px; font-size: 16px; line-height: 1.5;">
+                    Для доступа к играм необходимо авторизоваться через Telegram.<br>
+                    Это обеспечит безопасность ваших средств и позволит синхронизировать баланс.
+                </p>
+                <a href="https://t.me/BezdarMoneybot?start=site_login" target="_blank" 
+                   style="display: inline-block; background: linear-gradient(135deg, #0088cc 0%, #005999 100%); 
+                          color: white; padding: 18px 40px; border-radius: 15px; text-decoration: none; 
+                          font-weight: 700; font-size: 18px; transition: all 0.3s;"
+                   onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 30px rgba(0, 136, 204, 0.4)';"
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                    <i class="fab fa-telegram"></i> Войти через Telegram
+                </a>
+                <div style="margin-top: 30px; color: #8a94a6; font-size: 14px;">
+                    <p><i class="fas fa-shield-alt"></i> Ваши данные защищены</p>
+                    <p><i class="fas fa-sync-alt"></i> Баланс синхронизируется с ботом</p>
+                    <p><i class="fas fa-gamepad"></i> Мгновенный доступ к играм</p>
+                </div>
+            </div>
+        `;
+        
+        gamesSection.insertBefore(loginSection, gamesSection.firstChild);
+        
+        // Скрываем игры до авторизации
+        document.getElementById('gamesGrid').style.display = 'none';
+        document.querySelector('.bonus-section').style.display = 'none';
+        document.querySelector('.bot-section').style.display = 'none';
+    }
+    
+    // Загружаем баланс пользователя из бота
+    async function loadUserBalance() {
+        if (!tgUser) return;
+        
+        try {
+            // Здесь должен быть запрос к вашему API для получения баланса
+            // Для демо используем localStorage
+            const savedBalance = localStorage.getItem(`balance_${tgUser.id}`);
+            if (savedBalance) {
+                balance = parseInt(savedBalance);
+                updateBalance();
+                showNotification(`Добро пожаловать, ${tgUser.first_name}!`);
+            } else {
+                // Показываем демо баланс
+                balance = 1000;
+                updateBalance();
+            }
+            
+            // Показываем игры
+            document.getElementById('gamesGrid').style.display = 'grid';
+            document.querySelector('.bonus-section').style.display = 'block';
+            document.querySelector('.bot-section').style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error loading balance:', error);
+        }
+    }
+    
+    // Инициализируем Telegram при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        // Проверяем, есть ли Telegram Web App
+        if (window.Telegram && window.Telegram.WebApp) {
+            initTelegram();
+        } else {
+            // Не в Telegram - показываем обычный сайт с кнопкой входа
+            showTelegramLogin();
+        }
+        
+        // Инициализируем основной функционал
+        if (typeof init === 'function') {
+            init();
+        }
+    });
+    
+    // Функция для обновления баланса через бота
+    async function syncWithBot() {
+        if (!tgUser) {
+            showNotification('Сначала войдите через Telegram');
+            return;
+        }
+        
+        showNotification('🔄 Синхронизация с ботом...');
+        
+        // Демо: имитация синхронизации
+        setTimeout(() => {
+            const addedStars = Math.floor(Math.random() * 200) + 50;
+            balance += addedStars;
+            updateBalance();
+            localStorage.setItem(`balance_${tgUser.id}`, balance);
+            
+            showNotification(`✅ Баланс обновлен! +${addedStars} ⭐`);
+        }, 1500);
+    }
+</script>
 </head>
 <body>
     <header>
@@ -1351,5 +1553,3 @@ document.addEventListener('DOMContentLoaded', () => {
     </script>
 </body>
 </html>
-
-
