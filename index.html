@@ -1451,7 +1451,38 @@
 
         // API конфигурация
         const API_URL = 'https://bezdar-money-bot.onrender.com';
+        // ==================== ДЕМО-РЕЖИМ ====================
+function demoMode() {
+    userId = 0;
+    sessionToken = 'demo_session_' + Date.now();
+    userBalance = 10000;
+    username = 'Демо-игрок';
+    
+    localStorage.setItem('tg_user_id', userId.toString());
+    localStorage.setItem('tg_session_token', sessionToken);
+    localStorage.setItem('demo_mode', 'true');
+    
+    updateBalanceDisplay();
+    updateUsernameDisplay();
+    showNotification('🎮 Включен демо-режим! Играйте бесплатно!', 'success');
+    
+    loadFromStorage();
+    updateStatsDisplay();
+    updateActivatedPromos();
+    
+    // Скрываем окно входа если оно открыто
+    const loginModal = document.getElementById('loginModal');
+    if (loginModal) {
+        loginModal.style.display = 'none';
+    }
+}
 
+// Прямо под ней добавьте:
+function enableDemoMode() {
+    localStorage.setItem('demo_mode', 'true');
+    demoMode();
+}   
+        
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('loader').style.display = 'none';
@@ -1475,54 +1506,64 @@
         });
 
         // ==================== ИСПРАВЛЕННАЯ СИСТЕМА АВТОРИЗАЦИИ ====================
-        function initLoginSystem() {
-            console.log('Инициализация системы авторизации...');
-            
-            // Проверяем URL параметры
-            const urlParams = new URLSearchParams(window.location.search);
-            const tgUserId = urlParams.get('user_id');
-            const tgSession = urlParams.get('session_token');
-            
-            console.log('Параметры URL:', { tgUserId, tgSession });
-            
-            if (tgUserId && tgSession) {
-                console.log('Найдены параметры в URL, авторизуем...');
-                userId = parseInt(tgUserId);
-                sessionToken = tgSession;
-                
-                localStorage.setItem('tg_user_id', userId.toString());
-                localStorage.setItem('tg_session_token', sessionToken);
-                
-                // Очищаем URL от параметров
-                if (window.history && window.history.replaceState) {
-                    const cleanUrl = window.location.origin + window.location.pathname;
-                    window.history.replaceState({}, document.title, cleanUrl);
-                }
-                
-                // Загружаем данные пользователя
-                loadUserData();
-                return;
-            }
-            
-            // Проверяем данные в localStorage
-            const savedUserId = localStorage.getItem('tg_user_id');
-            const savedSession = localStorage.getItem('tg_session_token');
-            
-            if (savedUserId && savedSession) {
-                console.log('Найдены данные в localStorage');
-                userId = parseInt(savedUserId);
-                sessionToken = savedSession;
-                
-                // Проверяем сессию
-                checkSessionValidity();
-                return;
-            }
-            
-            // Если ничего не найдено, показываем окно входа
-            console.log('Данные не найдены, показываем окно входа');
-            showLoginModal();
+      function initLoginSystem() {
+    console.log('Инициализация системы авторизации...');
+    
+    // Проверяем URL параметры
+    const urlParams = new URLSearchParams(window.location.search);
+    const tgUserId = urlParams.get('user_id');
+    const tgSession = urlParams.get('session_token');
+    
+    console.log('Параметры URL:', { tgUserId, tgSession });
+    
+    if (tgUserId && tgSession) {
+        console.log('Найдены параметры в URL, авторизуем...');
+        userId = parseInt(tgUserId);
+        sessionToken = tgSession;
+        
+        localStorage.setItem('tg_user_id', userId.toString());
+        localStorage.setItem('tg_session_token', sessionToken);
+        
+        // Очищаем URL от параметров
+        if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
         }
-
+        
+        // Загружаем данные пользователя
+        loadUserData();
+        return;
+    }
+    
+    // Проверяем данные в localStorage
+    const savedUserId = localStorage.getItem('tg_user_id');
+    const savedSession = localStorage.getItem('tg_session_token');
+    
+    if (savedUserId && savedSession) {
+        console.log('Найдены данные в localStorage');
+        userId = parseInt(savedUserId);
+        sessionToken = savedSession;
+        
+        // Проверяем сессию
+        checkSessionValidity();
+        return;
+    }
+    
+    // Если ничего не найдено, проверяем демо-режим
+    const demoModeEnabled = localStorage.getItem('demo_mode');
+    if (demoModeEnabled === 'true') {
+        console.log('Демо-режим активирован');
+        // Не включаем демо сразу, показываем окно входа
+        setTimeout(() => {
+            showLoginModal();
+        }, 500);
+    } else {
+        console.log('Данные не найдены, показываем окно входа');
+        setTimeout(() => {
+            showLoginModal();
+        }, 1000);
+    }
+}
         async function checkSessionValidity() {
             try {
                 const response = await fetch(`${API_URL}/api/balance`, {
@@ -1635,6 +1676,9 @@
                             <button class="btn btn-success" onclick="goToBotForAuth()" style="margin: 10px 0; width: 100%;">
                                 🔗 ПЕРЕЙТИ В БОТА ДЛЯ ВХОДА
                             </button>
+                            <button class="btn btn-warning" onclick="enableDemoMode()" style="margin: 10px 0; width: 100%;">
+                                🎮 ПОПРОБОВАТЬ ДЕМО-РЕЖИМ
+                            </button>
                             <div style="margin-top: 20px; padding: 10px; background: rgba(255,215,0,0.1); border-radius: 10px;">
                                 <p style="color: #ff9999; font-size: 12px; margin: 5px 0;">
                                     ⚠️ Если вы перешли из бота и видите это сообщение, 
@@ -1674,26 +1718,27 @@
             }
         }
 
-        function logout() {
-            if (confirm('Вы уверены, что хотите выйти?')) {
-                localStorage.removeItem('tg_user_id');
-                localStorage.removeItem('tg_session_token');
-                localStorage.removeItem('bezdarMoneyData');
-                
-                userId = null;
-                sessionToken = null;
-                userBalance = 0;
-                username = '';
-                
-                updateBalanceDisplay();
-                updateUsernameDisplay();
-                
-                showNotification('Вы вышли из аккаунта', 'info');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            }
-        }
+       function logout() {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+        localStorage.removeItem('tg_user_id');
+        localStorage.removeItem('tg_session_token');
+        localStorage.removeItem('bezdarMoneyData');
+        localStorage.removeItem('demo_mode'); // ДОБАВЬТЕ ЭТУ СТРОКУ
+        
+        userId = null;
+        sessionToken = null;
+        userBalance = 0;
+        username = '';
+        
+        updateBalanceDisplay();
+        updateUsernameDisplay();
+        
+        showNotification('Вы вышли из аккаунта', 'info');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    }
+}
 
         // ==================== ОБЩИЕ ФУНКЦИИ ====================
         function createStars() {
@@ -1820,11 +1865,11 @@
 
         // ==================== УПРАВЛЕНИЕ ИГРАМИ ====================
         function startGame(game) {
-            // Проверяем авторизацию
-            if (!userId || !sessionToken) {
-                showLoginModal();
-                return;
-            }
+    // Проверяем авторизацию (демо-режим тоже разрешен)
+    if ((!userId && !sessionToken) || (!userId && !sessionToken.includes('demo'))) {
+        showLoginModal();
+        return;
+    }
             
             document.querySelectorAll('.game-window').forEach(el => {
                 el.style.display = 'none';
