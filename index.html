@@ -1301,7 +1301,55 @@ balanceCard.innerHTML += `
 `;
 
 document.getElementById('syncBtn').addEventListener('click', syncWithBot);
+        // Интеграция с Telegram ботом для баланса звезд
+const TELEGRAM_BOT_TOKEN = '7634324714:AAHnJR3SD0M47tPols4rirVsBpT3GJTQnZQ';
+
+// Функция для обновления баланса (демо-версия)
+function updateStarsBalance(stars) {
+    balance = stars; // 1 звезда = 1 рубль в демо
+    updateBalance();
+    localStorage.setItem('tg_stars_balance', stars);
+    showNotification(`⭐ Баланс обновлен: ${stars} звезд`);
+}
+
+// Проверить баланс при загрузке
+function checkStarsBalance() {
+    const savedStars = localStorage.getItem('tg_stars_balance');
+    if (savedStars) {
+        updateStarsBalance(parseInt(savedStars));
+    }
+}
+
+// Добавить кнопку синхронизации
+const userInfo = document.querySelector('.user-info');
+userInfo.innerHTML += `
+    <button class="btn" id="syncStarsBtn" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">
+        <i class="fas fa-sync-alt"></i> Синхронизация
+    </button>
+`;
+
+document.getElementById('syncStarsBtn').addEventListener('click', () => {
+    showNotification('🔄 Запрос на синхронизацию отправлен в бота');
+    // В реальном проекте здесь будет запрос к вашему API
+});
+
+// Инициализировать при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    checkStarsBalance();
+    
+    // Демо: имитация получения звезд от бота
+    setInterval(() => {
+        if (Math.random() < 0.1) {
+            const newStars = Math.floor(Math.random() * 50) + 10;
+            const current = parseInt(localStorage.getItem('tg_stars_balance') || '0');
+            updateStarsBalance(current + newStars);
+            showNotification(`✨ Бот зачислил ${newStars} звезд!`);
+        }
+    }, 30000);
+});
     </script>
 </body>
 </html>
+
 
