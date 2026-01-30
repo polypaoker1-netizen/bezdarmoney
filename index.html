@@ -1866,7 +1866,7 @@ function enableDemoMode() {
         // ==================== УПРАВЛЕНИЕ ИГРАМИ ====================
         function startGame(game) {
     // Проверяем авторизацию (демо-режим тоже разрешен)
-    if ((!userId && !sessionToken) || (!userId && !sessionToken.includes('demo'))) {
+    if (!userId || !sessionToken) {
         showLoginModal();
         return;
     }
@@ -2564,7 +2564,7 @@ function enableDemoMode() {
         }
 
         async function createWithdrawal() {
-            if (!userId || !sessionToken) {
+            if ((!userId || !sessionToken) || (userId === 0 && sessionToken.includes('demo'))) {
                 showNotification('Для вывода необходимо авторизоваться', 'warning');
                 return;
             }
@@ -2661,11 +2661,12 @@ function enableDemoMode() {
         }
 
         // ==================== СТАТИСТИКА ====================
-        function showStats() {
-            if (!userId || !sessionToken) {
-                showLoginModal();
-                return;
-            }
+       function showStats() {
+    // Разрешаем статистику и для демо-режима
+    if (!userId || !sessionToken) {
+        showLoginModal();
+        return;
+    }
             
             document.querySelectorAll('.game-window').forEach(el => {
                 el.style.display = 'none';
