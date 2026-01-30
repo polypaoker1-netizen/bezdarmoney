@@ -1420,6 +1420,37 @@
                 alert('Бонусная система временно недоступна. Следите за обновлениями!');
             });
         }
+// Кнопка синхронизации с Telegram
+    document.getElementById('depositBtn').insertAdjacentHTML('afterend', `
+        <button class="btn" id="tgSyncBtn" style="background: linear-gradient(135deg, #0088cc, #005999);">
+            <i class="fab fa-telegram"></i> Синхр.
+        </button>
+    `);
+    
+    document.getElementById('tgSyncBtn').addEventListener('click', function() {
+        if (!tgUser) {
+            alert('Сначала войдите через Telegram бота!\n\nНажмите на кнопку "Войти через Telegram" выше.');
+            return;
+        }
+        
+        // Демо-синхронизация (в реальности здесь будет запрос к API)
+        const newStars = Math.floor(Math.random() * 200) + 50;
+        balance += newStars;
+        updateBalance();
+        saveBalanceToStorage();
+        
+        showNotification(`✅ Синхронизировано с ботом! +${newStars} ⭐`);
+    });
+    
+    // Обновляем функцию showNotification для сохранения баланса
+    const originalShowNotification = window.showNotification;
+    window.showNotification = function(message) {
+        if (originalShowNotification) {
+            originalShowNotification(message);
+        }
+        saveBalanceToStorage();
+    };
+}
         
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', init);
