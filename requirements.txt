@@ -1,6 +1,6 @@
 # Минимальный набор для BezdarMoney
 
-# 1. Telegram Bot (только aiogram)
+# 1. Telegram Bot (ВЫБЕРИТЕ ТОЛЬКО ОДИН!)
 aiogram==3.0.0
 
 # 2. FastAPI веб-сервер
