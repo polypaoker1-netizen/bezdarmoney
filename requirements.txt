@@ -1,23 +1,10 @@
-# Минимальный набор для BezdarMoney
-
-# 1. Telegram Bot (ВЫБЕРИТЕ ТОЛЬКО ОДИН!)
+# Без aiofiles
 aiogram==3.0.0
-
-# 2. FastAPI веб-сервер
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-
-# 3. База данных
 sqlalchemy==2.0.23
 asyncpg==0.29.0
-
-# 4. Redis для сессий
 redis==5.0.1
-
-# 5. JWT токены
 pyjwt==2.8.0
-
-# 6. Утилиты
 python-dotenv==1.0.0
-aiofiles==23.2.1
 httpx==0.25.1
