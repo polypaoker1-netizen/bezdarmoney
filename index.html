@@ -1407,9 +1407,9 @@
         let diceRolling = false;
 
         // API конфигурация
-        // ЗАМЕНИТЕ ЭТОТ URL на реальный URL вашего бота на хостинге
-        const API_URL = 'https://ваш-домен.com'; 
-        // Для локального тестирования используйте: const API_URL = 'http://localhost:8080';
+        // ЗАМЕНИТЕ НА ВАШ РЕАЛЬНЫЙ URL БОТА НА RENDER
+        const API_URL = 'https://bezdar-money-bot.onrender.com'; 
+        // Для локального тестирования: const API_URL = 'http://localhost:10000';
 
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
         document.addEventListener('DOMContentLoaded', function() {
@@ -1424,100 +1424,73 @@
                 guessValue.textContent = this.value;
             });
             
+            // Показываем баланс даже если не авторизован
+            loadFromStorage();
+            updateBalanceDisplay();
+            
             setTimeout(() => {
                 showNotification('💰 Добро пожаловать в BezdarMoney Casino!', 'info');
             }, 1000);
         });
 
-        // ==================== СИСТЕМА АВТОРИЗАЦИИ ====================
+        // ==================== ИСПРАВЛЕННАЯ СИСТЕМА АВТОРИЗАЦИИ ====================
         function initLoginSystem() {
-            // Проверяем параметры URL (для входа через Telegram бота)
+            console.log('Инициализация системы авторизации...');
+            
+            // Проверяем URL параметры (самый важный шаг!)
             const urlParams = new URLSearchParams(window.location.search);
             const tgUserId = urlParams.get('user_id');
-            const tgSession = urlParams.get('session');
+            const tgSession = urlParams.get('session_token');
+            
+            console.log('Параметры URL:', { tgUserId, tgSession });
             
             if (tgUserId && tgSession) {
-                // Сохраняем данные сессии
-                localStorage.setItem('tg_user_id', tgUserId);
-                localStorage.setItem('tg_session', tgSession);
-                
-                // Загружаем баланс с сервера
+                console.log('Найдены параметры в URL, сохраняем...');
+                // Сохраняем данные
                 userId = parseInt(tgUserId);
                 sessionToken = tgSession;
-                loadBalanceFromServer();
-            } else {
-                // Пробуем загрузить из localStorage
-                const savedUserId = localStorage.getItem('tg_user_id');
-                const savedSession = localStorage.getItem('tg_session');
                 
-                if (savedUserId && savedSession) {
-                    userId = parseInt(savedUserId);
-                    sessionToken = savedSession;
-                    loadBalanceFromServer();
-                } else {
-                    // Показываем окно входа
-                    showLoginModal();
+                localStorage.setItem('tg_user_id', userId.toString());
+                localStorage.setItem('tg_session_token', sessionToken);
+                
+                // Очищаем URL от параметров для чистоты
+                if (window.history && window.history.replaceState) {
+                    const cleanUrl = window.location.origin + window.location.pathname;
+                    window.history.replaceState({}, document.title, cleanUrl);
                 }
+                
+                // Загружаем баланс с сервера
+                loadBalanceFromServer();
+                
+                // Загружаем локальные данные
+                loadFromStorage();
+                updateStatsDisplay();
+                updateActivatedPromos();
+                
+                showNotification('✅ Авторизация через Telegram успешна!', 'success');
+                return;
             }
             
-            // Загружаем локальные данные
-            loadFromStorage();
-            updateStatsDisplay();
-        }
-
-        function showLoginModal() {
-            const modalHTML = `
-                <div id="loginModal" class="modal" style="display: flex;">
-                    <div class="modal-content">
-                        <h2 style="color: #ffd700; margin-bottom: 20px;">🔐 ВХОД В BEZDARMONEY</h2>
-                        <div style="margin: 20px 0;">
-                            <p style="color: #ffd700; margin-bottom: 20px;">
-                                Для игры необходимо авторизоваться через Telegram бота
-                            </p>
-                            <div style="background: rgba(0,255,0,0.1); padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #00ff00;">
-                                <h3 style="color: #00ff00;">📱 Как войти:</h3>
-                                <ol style="color: #ffd700; text-align: left; margin: 15px 0; padding-left: 20px;">
-                                    <li>Перейдите в нашего бота: <strong>@BezdarMoneyBot</strong></li>
-                                    <li>Нажмите кнопку "🎮 Играть на сайте"</li>
-                                    <li>Вы будете автоматически перенаправлены на сайт</li>
-                                    <li>Ваш баланс синхронизируется</li>
-                                </ol>
-                            </div>
-                            <button class="btn btn-success" onclick="goToBot()" style="margin-top: 20px; width: 100%;">
-                                ПЕРЕЙТИ В БОТА ДЛЯ ВХОДА
-                            </button>
-                            <button class="btn btn-warning" onclick="demoMode()" style="margin-top: 10px; width: 100%;">
-                                🎮 ДЕМО-РЕЖИМ (без реальных денег)
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
+            // Проверяем данные в localStorage
+            const savedUserId = localStorage.getItem('tg_user_id');
+            const savedSession = localStorage.getItem('tg_session_token');
             
-            const modalContainer = document.createElement('div');
-            modalContainer.innerHTML = modalHTML;
-            document.body.appendChild(modalContainer);
-        }
-
-        function goToBot() {
-            window.open('https://t.me/BezdarMoneyBot', '_blank');
-        }
-
-        function demoMode() {
-            // Скрываем модальное окно
-            const modal = document.getElementById('loginModal');
-            if (modal) modal.remove();
+            if (savedUserId && savedSession) {
+                console.log('Найдены данные в localStorage');
+                userId = parseInt(savedUserId);
+                sessionToken = savedSession;
+                
+                // Проверяем сессию на сервере
+                checkSessionValidity();
+                return;
+            }
             
-            // Устанавливаем демо-режим
-            userId = 0;
-            sessionToken = 'demo';
-            userBalance = 10000; // Начальный баланс в демо-режиме
-            
-            updateBalanceDisplay();
-            showNotification('🎮 Включен демо-режим! Играйте бесплатно!', 'success');
+            // Если ничего не найдено, показываем демо-режим
+            console.log('Данные не найдены, включаем демо-режим');
+            demoMode();
         }
 
-        async function loadBalanceFromServer() {
+        async function checkSessionValidity() {
             try {
                 const response = await fetch(`${API_URL}/api/balance`, {
                     method: 'POST',
@@ -1530,25 +1503,33 @@
                     })
                 });
                 
+                if (!response.ok) {
+                    throw new Error('Session invalid');
+                }
+                
                 const data = await response.json();
                 
                 if (data.success) {
                     userBalance = data.balance;
                     updateBalanceDisplay();
-                    showNotification(`💰 Баланс синхронизирован: ${userBalance}⭐`, 'success');
+                    showNotification('✅ Сессия восстановлена!', 'success');
+                    
+                    loadFromStorage();
+                    updateStatsDisplay();
+                    updateActivatedPromos();
                 } else {
-                    showNotification('❌ Ошибка синхронизации баланса', 'error');
-                    // Пробуем создать новую сессию
-                    await createNewSession();
+                    // Сессия невалидна, переключаемся на демо
+                    showNotification('⚠️ Сессия истекла, включен демо-режим', 'warning');
+                    demoMode();
                 }
             } catch (error) {
-                console.error('Ошибка загрузки баланса:', error);
-                showNotification('⚠️ Не удалось загрузить баланс. Используется локальная версия', 'warning');
-                loadFromStorage();
+                console.error('Ошибка проверки сессии:', error);
+                showNotification('⚠️ Не удалось проверить сессию, включен демо-режим', 'warning');
+                demoMode();
             }
         }
 
-        async function createNewSession() {
+        async function createNewSession(userId) {
             try {
                 const response = await fetch(`${API_URL}/api/session`, {
                     method: 'POST',
@@ -1564,19 +1545,89 @@
                 
                 if (data.success) {
                     sessionToken = data.session_token;
-                    localStorage.setItem('tg_session', sessionToken);
+                    localStorage.setItem('tg_session_token', sessionToken);
                     userBalance = data.balance;
                     updateBalanceDisplay();
-                    showNotification('✅ Сессия восстановлена!', 'success');
+                    showNotification('✅ Новая сессия создана!', 'success');
+                    
+                    // Обновляем URL чтобы сохранить сессию
+                    const newUrl = `${window.location.origin}${window.location.pathname}?user_id=${userId}&session_token=${sessionToken}`;
+                    window.history.replaceState({}, document.title, newUrl);
+                    
+                    return true;
                 }
             } catch (error) {
                 console.error('Ошибка создания сессии:', error);
             }
+            return false;
+        }
+
+        function demoMode() {
+            // Устанавливаем демо-режим
+            userId = 0;
+            sessionToken = 'demo_session_' + Date.now();
+            userBalance = 10000;
+            
+            localStorage.setItem('tg_user_id', userId.toString());
+            localStorage.setItem('tg_session_token', sessionToken);
+            
+            updateBalanceDisplay();
+            showNotification('🎮 Включен демо-режим! Играйте бесплатно!', 'success');
+            
+            loadFromStorage();
+            updateStatsDisplay();
+            updateActivatedPromos();
+            
+            // Скрываем окно входа если оно открыто
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) {
+                loginModal.remove();
+            }
+        }
+
+        async function loadBalanceFromServer() {
+            // В демо-режиме пропускаем запрос
+            if (userId === 0 || sessionToken.includes('demo')) {
+                console.log('Демо-режим, баланс не загружается');
+                return;
+            }
+            
+            try {
+                console.log('Загрузка баланса с сервера...');
+                
+                const response = await fetch(`${API_URL}/api/balance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        session_token: sessionToken
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Ответ от сервера:', data);
+                
+                if (data.success) {
+                    userBalance = data.balance;
+                    updateBalanceDisplay();
+                    showNotification(`💰 Баланс синхронизирован: ${userBalance}⭐`, 'success');
+                } else {
+                    showNotification('⚠️ Не удалось загрузить баланс', 'warning');
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки баланса:', error);
+                showNotification('⚠️ Ошибка соединения с сервером', 'error');
+            }
         }
 
         async function updateBalanceOnServer(amount, gameType, win = true) {
-            if (userId === 0 || sessionToken === 'demo') {
-                // В демо-режиме не отправляем на сервер
+            if (userId === 0 || sessionToken.includes('demo')) {
                 return userBalance;
             }
             
@@ -1589,18 +1640,19 @@
                     body: JSON.stringify({
                         secret: 'bezdar_casino_secret_2024',
                         user_id: userId,
-                        amount: amount,
+                        amount: Math.abs(amount),
                         game_type: gameType,
                         win: win
                     })
                 });
                 
-                const data = await response.json();
-                
-                if (data.success) {
-                    userBalance = data.new_balance;
-                    updateBalanceDisplay();
-                    return userBalance;
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        userBalance = data.new_balance;
+                        updateBalanceDisplay();
+                        return userBalance;
+                    }
                 }
             } catch (error) {
                 console.error('Ошибка обновления баланса:', error);
@@ -1609,7 +1661,7 @@
             return userBalance;
         }
 
-        // ==================== ФУНКЦИИ ОБЩИЕ ====================
+        // ==================== ОБЩИЕ ФУНКЦИИ (остаются без изменений) ====================
         function createStars() {
             const stars = document.getElementById('stars');
             stars.innerHTML = '';
@@ -1642,7 +1694,7 @@
             saveToStorage();
             
             // Обновляем на сервере (если не демо-режим)
-            if (userId !== 0 && sessionToken !== 'demo' && amount !== 0) {
+            if (userId !== 0 && !sessionToken.includes('demo') && amount !== 0) {
                 updateBalanceOnServer(Math.abs(amount), gameType, win);
             }
             
@@ -1688,9 +1740,15 @@
         }
 
         function showModal(modalId) {
-            if (userId === null && modalId !== 'bonusModal') {
-                showLoginModal();
-                return;
+            if (userId === null || userId === 0) {
+                // В демо-режиме показываем сообщение
+                if (modalId === 'depositModal') {
+                    showNotification('💰 Для пополнения перейдите в Telegram бота @BezdarMoneyBot', 'warning');
+                    return;
+                } else if (modalId === 'withdrawModal') {
+                    showNotification('💸 Вывод доступен только для авторизованных пользователей', 'warning');
+                    return;
+                }
             }
             
             document.getElementById(modalId).style.display = 'flex';
@@ -1702,9 +1760,9 @@
 
         // ==================== УПРАВЛЕНИЕ ИГРАМИ ====================
         function startGame(game) {
+            // В демо-режиме можно играть
             if (userId === null) {
-                showLoginModal();
-                return;
+                showNotification('🎮 Демо-режим включен. Играйте бесплатно!', 'info');
             }
             
             document.querySelectorAll('.game-window').forEach(el => {
@@ -1758,11 +1816,6 @@
         }
 
         async function placeCrashBet() {
-            if (userId === null) {
-                showLoginModal();
-                return;
-            }
-            
             const betInput = document.getElementById('crash-bet');
             const bet = parseInt(betInput.value);
             
@@ -1922,11 +1975,6 @@
         }
 
         async function startMinesGame() {
-            if (userId === null) {
-                showLoginModal();
-                return;
-            }
-            
             const betInput = document.getElementById('mines-bet');
             const bet = parseInt(betInput.value);
             
@@ -2047,11 +2095,6 @@
         }
 
         function placeRouletteBet(color) {
-            if (userId === null) {
-                showLoginModal();
-                return;
-            }
-            
             if (rouletteSpinning) {
                 showNotification('Дождитесь окончания вращения!', 'error');
                 return;
@@ -2077,11 +2120,6 @@
         }
 
         async function spinRoulette() {
-            if (userId === null) {
-                showLoginModal();
-                return;
-            }
-            
             if (rouletteSpinning) {
                 showNotification('Рулетка уже крутится!', 'error');
                 return;
@@ -2168,11 +2206,6 @@
         }
 
         async function spinSlots() {
-            if (userId === null) {
-                showLoginModal();
-                return;
-            }
-            
             if (slotsSpinning) {
                 showNotification('Слоты уже крутятся!', 'error');
                 return;
@@ -2328,11 +2361,6 @@
         }
 
         async function rollDice() {
-            if (userId === null) {
-                showLoginModal();
-                return;
-            }
-            
             if (diceRolling) {
                 showNotification('Кости уже бросаются!', 'error');
                 return;
@@ -2412,13 +2440,13 @@
         }
 
         async function createWithdrawal() {
-            const amount = parseInt(document.getElementById('withdraw-amount').value);
-            const username = document.getElementById('withdraw-username').value.trim();
-            
-            if (userId === 0 || sessionToken === 'demo') {
+            if (userId === 0 || sessionToken.includes('demo')) {
                 showNotification('В демо-режиме вывод недоступен', 'warning');
                 return;
             }
+            
+            const amount = parseInt(document.getElementById('withdraw-amount').value);
+            const username = document.getElementById('withdraw-username').value.trim();
             
             if (isNaN(amount) || amount < 100) {
                 showNotification('Минимальная сумма вывода: 100⭐', 'error');
@@ -2435,12 +2463,10 @@
                 return;
             }
             
-            updateBalance(-amount, 'withdrawal', false);
-            
+            // Здесь можно добавить отправку заявки на сервер
             showNotification('Заявка на вывод создана! Админ свяжется с вами в Telegram', 'success');
             hideModal('withdrawModal');
             
-            // Здесь можно добавить отправку заявки на сервер
             console.log('📤 ЗАЯВКА НА ВЫВОД:');
             console.log('👤 User ID:', userId);
             console.log('💰 Сумма:', amount + '⭐');
@@ -2512,11 +2538,6 @@
 
         // ==================== СТАТИСТИКА ====================
         function showStats() {
-            if (userId === null) {
-                showLoginModal();
-                return;
-            }
-            
             document.querySelectorAll('.game-window').forEach(el => {
                 el.style.display = 'none';
             });
@@ -2584,70 +2605,81 @@
         // ==================== АВТОМАТИЧЕСКАЯ СИНХРОНИЗАЦИЯ ====================
         // Синхронизация баланса каждые 30 секунд
         setInterval(() => {
-            if (userId && userId !== 0 && sessionToken && sessionToken !== 'demo') {
+            if (userId && userId !== 0 && sessionToken && !sessionToken.includes('demo')) {
                 loadBalanceFromServer();
             }
         }, 30000);
 
         // Синхронизация при возвращении на вкладку
         document.addEventListener('visibilitychange', function() {
-            if (!document.hidden && userId && userId !== 0 && sessionToken && sessionToken !== 'demo') {
+            if (!document.hidden && userId && userId !== 0 && sessionToken && !sessionToken.includes('demo')) {
                 loadBalanceFromServer();
             }
         });
-    </script>
-    <script>
-    // Дополнительный скрипт для обработки параметров URL
-    (function() {
-        // Функция для парсинга параметров из хэша
-        function parseHashParams() {
-            const hash = window.location.hash.substring(1);
-            const params = {};
-            
-            if (hash) {
-                const pairs = hash.split('&');
-                pairs.forEach(pair => {
-                    const [key, value] = pair.split('=');
-                    if (key && value) {
-                        params[decodeURIComponent(key)] = decodeURIComponent(value);
-                    }
-                });
-            }
-            
-            return params;
+
+        // ==================== ДОПОЛНИТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА НА САЙТ ====================
+        function goToBotForPlay() {
+            window.open('https://t.me/BezdarMoneyBot?start=play', '_blank');
         }
-        
-        // Проверяем параметры при загрузке
-        setTimeout(() => {
-            const hashParams = parseHashParams();
-            const urlParams = new URLSearchParams(window.location.search);
-            
-            // Объединяем параметры из хэша и query string
-            const allParams = {
-                ...Object.fromEntries(urlParams.entries()),
-                ...hashParams
-            };
-            
-            if (allParams.user_id && allParams.session_token) {
-                console.log('Автоматическая авторизация по параметрам:', allParams);
-                
-                // Сохраняем данные
-                localStorage.setItem('tg_user_id', allParams.user_id);
-                localStorage.setItem('tg_session_token', allParams.session_token);
-                
-                // Обновляем URL без параметров
-                if (window.history.replaceState) {
-                    const cleanUrl = window.location.origin + window.location.pathname;
-                    window.history.replaceState({}, document.title, cleanUrl);
+
+        // Автоматическая проверка при загрузке
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                // Если демо-режим и нет баланса, показываем подсказку
+                if (userId === 0 && userBalance === 0) {
+                    userBalance = 10000;
+                    updateBalanceDisplay();
                 }
+            }, 500);
+        });
+    </script>
+    
+    <!-- Дополнительный скрипт для автоматической обработки параметров -->
+    <script>
+        (function() {
+            // Автоматически проверяем параметры URL при загрузке
+            function parseUrlParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const user_id = urlParams.get('user_id');
+                const session_token = urlParams.get('session_token');
                 
-                // Перезагружаем страницу для применения авторизации
-                setTimeout(() => {
-                    window.location.reload();
-                }, 100);
+                if (user_id && session_token) {
+                    console.log('Автоматическая авторизация по URL параметрам');
+                    
+                    // Сохраняем в localStorage
+                    localStorage.setItem('tg_user_id', user_id);
+                    localStorage.setItem('tg_session_token', session_token);
+                    
+                    // Если страница уже загружена, обновляем авторизацию
+                    if (window.initLoginSystem) {
+                        setTimeout(() => {
+                            window.initLoginSystem();
+                        }, 100);
+                    }
+                }
             }
-        }, 500);
-    })();
-</script>
+            
+            // Запускаем проверку
+            parseUrlParams();
+            
+            // Также проверяем hash параметры
+            function parseHashParams() {
+                const hash = window.location.hash.substring(1);
+                if (hash) {
+                    const params = new URLSearchParams(hash);
+                    const user_id = params.get('user_id');
+                    const session_token = params.get('session_token');
+                    
+                    if (user_id && session_token) {
+                        // Переадресуем на правильный URL
+                        const newUrl = `${window.location.origin}${window.location.pathname}?user_id=${user_id}&session_token=${session_token}`;
+                        window.location.replace(newUrl);
+                    }
+                }
+            }
+            
+            parseHashParams();
+        })();
+    </script>
 </body>
 </html>
