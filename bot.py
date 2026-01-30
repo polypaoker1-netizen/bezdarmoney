@@ -4,6 +4,7 @@ import sqlite3
 import json
 import os
 import hashlib
+import secrets
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -39,6 +40,13 @@ bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher(storage=MemoryStorage())
 
 # ========== СОСТОЯНИЯ ==========
+class RegisterStates(StatesGroup):
+    waiting_password = State()
+    waiting_password_confirm = State()
+
+class LoginStates(StatesGroup):
+    waiting_password = State()
+
 class WithdrawStates(StatesGroup):
     waiting_amount = State()
     waiting_username = State()
@@ -54,22 +62,26 @@ class AdminStates(StatesGroup):
     promo_uses = State()
     promo_expires = State()
 
-class UserStates(StatesGroup):
-    activate_promo = State()
-
 # ========== БАЗА ДАННЫХ ==========
 def init_db():
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
     
+    # Пользователи с паролями
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
-            username TEXT,
+            username TEXT UNIQUE,
+            password_hash TEXT,
             balance INTEGER DEFAULT 0,
             total_deposited INTEGER DEFAULT 0,
             total_withdrawn INTEGER DEFAULT 0,
+            total_wagered INTEGER DEFAULT 0,
+            total_won INTEGER DEFAULT 0,
+            total_lost INTEGER DEFAULT 0,
             is_banned BOOLEAN DEFAULT FALSE,
+            is_online BOOLEAN DEFAULT FALSE,
+            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -126,21 +138,60 @@ def init_db():
         )
     ''')
     
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS game_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            game_type TEXT,
+            bet_amount INTEGER,
+            win_amount INTEGER,
+            result TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
 init_db()
 
 # ========== ФУНКЦИИ БАЗЫ ДАННЫХ ==========
-def get_balance(user_id):
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password, hashed):
+    return hash_password(password) == hashed
+
+def register_user(user_id, username, password):
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+    
+    try:
+        password_hash = hash_password(password)
+        cursor.execute('''
+            INSERT INTO users (user_id, username, password_hash, balance) 
+            VALUES (?, ?, ?, 0)
+        ''', (user_id, username, password_hash))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def login_user(username, password):
+    conn = sqlite3.connect('bezdar_casino.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT user_id, password_hash FROM users WHERE username = ?', (username,))
     result = cursor.fetchone()
     conn.close()
-    return result[0] if result else 0
+    
+    if result and verify_password(password, result[1]):
+        return result[0]  # Возвращаем user_id
+    return None
 
-def get_user(user_id):
+def get_user_by_id(user_id):
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
@@ -148,11 +199,17 @@ def get_user(user_id):
     conn.close()
     return result
 
-def update_balance(user_id, amount, is_deposit=True):
+def get_user_by_username(username):
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
-    
-    cursor.execute('INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0)', (user_id,))
+    cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+    result = cursor.fetchone()
+    conn.close()
+    return result
+
+def update_balance(user_id, amount, is_deposit=True, game_type=None, win_amount=0):
+    conn = sqlite3.connect('bezdar_casino.db')
+    cursor = conn.cursor()
     
     if is_deposit:
         cursor.execute('UPDATE users SET balance = balance + ?, total_deposited = total_deposited + ? WHERE user_id = ?', 
@@ -161,12 +218,39 @@ def update_balance(user_id, amount, is_deposit=True):
         cursor.execute('UPDATE users SET balance = balance - ?, total_withdrawn = total_withdrawn + ? WHERE user_id = ?', 
                       (amount, amount, user_id))
     
+    # Если это игра, обновляем статистику
+    if game_type:
+        if win_amount > 0:
+            cursor.execute('UPDATE users SET total_won = total_won + ?, total_wagered = total_wagered + ? WHERE user_id = ?',
+                          (win_amount, amount, user_id))
+        else:
+            cursor.execute('UPDATE users SET total_lost = total_lost + ?, total_wagered = total_wagered + ? WHERE user_id = ?',
+                          (amount, amount, user_id))
+    
     cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
     new_balance = cursor.fetchone()[0]
     
     conn.commit()
     conn.close()
     return new_balance
+
+def get_balance(user_id):
+    conn = sqlite3.connect('bezdar_casino.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else 0
+
+def record_game_history(user_id, game_type, bet_amount, win_amount, result):
+    conn = sqlite3.connect('bezdar_casino.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO game_history (user_id, game_type, bet_amount, win_amount, result)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (user_id, game_type, bet_amount, win_amount, result))
+    conn.commit()
+    conn.close()
 
 def ban_user(user_id):
     conn = sqlite3.connect('bezdar_casino.db')
@@ -200,11 +284,14 @@ def get_stats():
     cursor.execute('SELECT SUM(balance) FROM users')
     total_balance = cursor.fetchone()[0] or 0
     
-    cursor.execute('SELECT SUM(amount) FROM payments WHERE status = "completed"')
+    cursor.execute('SELECT SUM(total_deposited) FROM users')
     total_deposits = cursor.fetchone()[0] or 0
     
-    cursor.execute('SELECT SUM(amount) FROM withdrawals WHERE status = "completed"')
+    cursor.execute('SELECT SUM(total_withdrawn) FROM users')
     total_withdrawals = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT SUM(total_wagered) FROM users')
+    total_wagered = cursor.fetchone()[0] or 0
     
     cursor.execute('SELECT COUNT(*) FROM withdrawals WHERE status = "pending"')
     pending_withdrawals = cursor.fetchone()[0]
@@ -215,6 +302,7 @@ def get_stats():
         'total_balance': total_balance,
         'total_deposits': total_deposits,
         'total_withdrawals': total_withdrawals,
+        'total_wagered': total_wagered,
         'pending_withdrawals': pending_withdrawals
     }
 
@@ -236,7 +324,6 @@ def use_promocode(user_id, code):
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
     
-    # Проверяем промокод
     cursor.execute('SELECT amount, uses_left FROM promocodes WHERE code = ? AND datetime(expires_at) > datetime("now")', (code,))
     promo = cursor.fetchone()
     
@@ -250,19 +337,13 @@ def use_promocode(user_id, code):
         conn.close()
         return None
     
-    # Проверяем, использовал ли уже пользователь этот промокод
     cursor.execute('SELECT id FROM promo_uses WHERE user_id = ? AND code = ?', (user_id, code))
     if cursor.fetchone():
         conn.close()
         return None
     
-    # Обновляем промокод
     cursor.execute('UPDATE promocodes SET uses_left = uses_left - 1 WHERE code = ?', (code,))
-    
-    # Записываем использование
     cursor.execute('INSERT INTO promo_uses (user_id, code) VALUES (?, ?)', (user_id, code))
-    
-    # Начисляем баланс
     cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (amount, user_id))
     
     conn.commit()
@@ -298,17 +379,11 @@ def add_withdrawal(user_id, amount, username):
 def create_api_session(user_id):
     conn = sqlite3.connect('bezdar_casino.db')
     cursor = conn.cursor()
-    
-    # Удаляем старые сессии пользователя
     cursor.execute('DELETE FROM api_sessions WHERE user_id = ?', (user_id,))
-    
-    # Создаем новую сессию
-    session_token = hashlib.sha256(f"{user_id}{datetime.now()}{API_SECRET}".encode()).hexdigest()
+    session_token = hashlib.sha256(f"{user_id}{datetime.now()}{secrets.token_hex(16)}".encode()).hexdigest()
     expires_at = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
-    
     cursor.execute('INSERT INTO api_sessions (user_id, session_token, expires_at) VALUES (?, ?, ?)',
                   (user_id, session_token, expires_at))
-    
     conn.commit()
     conn.close()
     return session_token
@@ -321,91 +396,261 @@ def verify_api_session(session_token):
     conn.close()
     return result[0] if result else None
 
-def get_session_by_user(user_id):
-    conn = sqlite3.connect('bezdar_casino.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT session_token FROM api_sessions WHERE user_id = ? AND datetime(expires_at) > datetime("now")', (user_id,))
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else None
+# ========== СИСТЕМА АВТОРИЗАЦИИ ==========
+user_sessions = {}  # user_id: {username: '', logged_in: False}
 
 # ========== КОМАНДА /start ==========
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     user_id = message.from_user.id
-    username = message.from_user.username or "Без имени"
+    username = message.from_user.username or f"user_{user_id}"
     
-    conn = sqlite3.connect('bezdar_casino.db')
-    cursor = conn.cursor()
-    cursor.execute('INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)', (user_id, username))
-    conn.commit()
-    conn.close()
+    # Проверяем, зарегистрирован ли пользователь
+    user_data = get_user_by_id(user_id)
     
-    balance = get_balance(user_id)
-    # Создаем сессию для сайта
-    session_token = get_session_by_user(user_id)
-    if not session_token:
+    if not user_data:
+        # Пользователь не зарегистрирован
+        await message.answer(f"""
+👋 <b>Добро пожаловать в BezdarMoney Casino!</b>
+
+У вас еще нет аккаунта.
+Выберите действие:
+        """, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📝 Регистрация", callback_data="register")],
+            [InlineKeyboardButton(text="🔐 Вход", callback_data="login")],
+            [InlineKeyboardButton(text="ℹ️ О проекте", callback_data="about")]
+        ]))
+    else:
+        # Пользователь уже зарегистрирован
+        balance = get_balance(user_id)
         session_token = create_api_session(user_id)
-    
-    # Генерируем ссылку на сайт с параметрами
-    website_url_with_params = f"{WEBSITE_URL}?user_id={user_id}&session_token={session_token}"
-    
-    welcome_text = f"""
-🎮 <b>Добро пожаловать в BezdarMoney Casino!</b>
+        website_url_with_params = f"{WEBSITE_URL}?user_id={user_id}&session_token={session_token}"
+        
+        await message.answer(f"""
+🎮 <b>Добро пожаловать назад!</b>
 
-💰 <b>Ваш баланс:</b> {balance} ⭐
+👤 <b>Ваш профиль:</b>
+├ Имя: @{user_data[1]}
+├ Баланс: {balance} ⭐
+└ ID: {user_id}
 
-📊 <b>Минимальные суммы:</b>
-• Пополнение: от {MIN_DEPOSIT} ⭐
-• Вывод: от {MIN_WITHDRAWAL} ⭐
+<b>Выберите действие:</b>
+        """, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="deposit_menu")],
+            [InlineKeyboardButton(text="💸 Вывести средства", callback_data="withdraw")],
+            [InlineKeyboardButton(text="🎮 Играть на сайте", url=website_url_with_params)],
+            [InlineKeyboardButton(text="📊 Моя статистика", callback_data="my_stats")],
+            [InlineKeyboardButton(text="🎁 Активировать промокод", callback_data="activate_promo")],
+            [InlineKeyboardButton(text="📞 Поддержка", url=f"https://t.me/{SUPPORT_USERNAME}")]
+        ]))
 
-✨ <b>Пополняйте баланс через Telegram Stars!</b>
-    """
+# ========== РЕГИСТРАЦИЯ ==========
+@dp.callback_query(F.data == "register")
+async def register_callback(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    username = callback.from_user.username or f"user_{user_id}"
     
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="deposit_menu")],
-        [InlineKeyboardButton(text="💸 Вывести средства", callback_data="withdraw")],
-        [InlineKeyboardButton(text="🎮 Играть на сайте", url=website_url_with_params)],
-        [InlineKeyboardButton(text="📞 Поддержка", url=f"https://t.me/{SUPPORT_USERNAME}")],
-        [InlineKeyboardButton(text="🎁 Активировать промокод", callback_data="activate_promo")]
-    ])
+    # Проверяем, не зарегистрирован ли уже
+    if get_user_by_id(user_id):
+        await callback.message.answer("❌ Вы уже зарегистрированы!")
+        await callback.answer()
+        return
     
-    await message.answer(welcome_text, reply_markup=keyboard)
-
-@dp.callback_query(F.data == "activate_promo")
-async def activate_promo_callback(callback: types.CallbackQuery):
-    await callback.message.answer("✏️ <b>Введите промокод:</b>")
-    await UserStates.activate_promo.set()
+    await state.update_data(username=username)
+    await callback.message.answer(
+        "📝 <b>Регистрация аккаунта</b>\n\n"
+        f"👤 Ваш Telegram username: @{username}\n\n"
+        "🔐 <b>Придумайте надежный пароль:</b>\n"
+        "(минимум 6 символов, буквы и цифры)"
+    )
+    await RegisterStates.waiting_password.set()
     await callback.answer()
 
-@dp.message(UserStates.activate_promo)
-async def process_promo(message: Message, state: FSMContext):
-    promo_code = message.text.strip().upper()
+@dp.message(RegisterStates.waiting_password)
+async def process_password(message: Message, state: FSMContext):
+    password = message.text.strip()
+    
+    if len(password) < 6:
+        await message.answer("❌ Пароль должен содержать минимум 6 символов!\nВведите пароль снова:")
+        return
+    
+    if not any(char.isdigit() for char in password):
+        await message.answer("❌ Пароль должен содержать хотя бы одну цифру!\nВведите пароль снова:")
+        return
+    
+    await state.update_data(password=password)
+    await message.answer("🔐 <b>Повторите пароль для подтверждения:</b>")
+    await RegisterStates.waiting_password_confirm.set()
+
+@dp.message(RegisterStates.waiting_password_confirm)
+async def process_password_confirm(message: Message, state: FSMContext):
+    data = await state.get_data()
+    password = data.get('password')
+    confirm_password = message.text.strip()
+    
+    if password != confirm_password:
+        await message.answer("❌ Пароли не совпадают!\nНачните регистрацию заново: /start")
+        await state.clear()
+        return
+    
+    username = data.get('username')
     user_id = message.from_user.id
     
-    result = use_promocode(user_id, promo_code)
+    success = register_user(user_id, username, password)
     
-    if result:
-        new_balance = get_balance(user_id)
-        await message.answer(
-            f"✅ <b>Промокод активирован!</b>\n\n"
-            f"💰 Начислено: {result} ⭐\n"
-            f"🏦 Новый баланс: {new_balance} ⭐"
-        )
+    if success:
+        # Дарим бонус за регистрацию
+        update_balance(user_id, 50, is_deposit=True)
+        
+        await message.answer(f"""
+✅ <b>Регистрация успешно завершена!</b>
+
+👤 <b>Ваш аккаунт:</b>
+├ Логин: @{username}
+├ Пароль: {'•' * len(password)}
+└ Бонус за регистрацию: 50 ⭐
+
+🔐 <b>Ваши данные для входа:</b>
+<b>Логин:</b> @{username}
+<b>Пароль:</b> {password}
+
+⚠️ <i>Сохраните эти данные!</i>
+
+Теперь вы можете пополнить баланс и начать играть!
+        """)
+        
+        # Создаем сессию для сайта
+        session_token = create_api_session(user_id)
+        website_url_with_params = f"{WEBSITE_URL}?user_id={user_id}&session_token={session_token}"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="deposit_menu")],
+            [InlineKeyboardButton(text="🎮 Играть на сайте", url=website_url_with_params)]
+        ])
+        
+        await message.answer("🎮 <b>Начните играть прямо сейчас!</b>", reply_markup=keyboard)
     else:
-        await message.answer("❌ <b>Промокод недействителен или уже использован!</b>")
+        await message.answer("❌ Ошибка регистрации! Возможно, такой username уже существует.")
     
     await state.clear()
 
-# ========== КОМАНДА /play (для быстрого перехода на сайт) ==========
+# ========== ВХОД ==========
+@dp.callback_query(F.data == "login")
+async def login_callback(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer(
+        "🔐 <b>Вход в аккаунт</b>\n\n"
+        "Введите ваш <b>Telegram username</b> (тот, который указывали при регистрации):\n"
+        "<i>Пример: @username</i>"
+    )
+    await LoginStates.waiting_password.set()
+    await callback.answer()
+
+@dp.message(LoginStates.waiting_password)
+async def process_login(message: Message, state: FSMContext):
+    username = message.text.strip().replace('@', '')
+    user_id = message.from_user.id
+    
+    # Проверяем существование пользователя
+    user_data = get_user_by_username(username)
+    
+    if not user_data:
+        await message.answer("❌ Пользователь не найден!\nПроверьте username или зарегистрируйтесь.")
+        await state.clear()
+        return
+    
+    await state.update_data(username=username)
+    await message.answer(f"👤 Пользователь: @{username}\n\n🔐 <b>Введите пароль:</b>")
+
+@dp.message()
+async def process_login_password(message: Message, state: FSMContext):
+    password = message.text.strip()
+    data = await state.get_data()
+    username = data.get('username')
+    
+    if not username:
+        await message.answer("❌ Ошибка сессии. Начните заново: /start")
+        await state.clear()
+        return
+    
+    user_id = login_user(username, password)
+    
+    if user_id:
+        # Обновляем user_id в базе (связываем с Telegram)
+        conn = sqlite3.connect('bezdar_casino.db')
+        cursor = conn.cursor()
+        cursor.execute('UPDATE users SET user_id = ? WHERE username = ?', (message.from_user.id, username))
+        conn.commit()
+        conn.close()
+        
+        balance = get_balance(message.from_user.id)
+        session_token = create_api_session(message.from_user.id)
+        website_url_with_params = f"{WEBSITE_URL}?user_id={message.from_user.id}&session_token={session_token}"
+        
+        await message.answer(f"""
+✅ <b>Вход выполнен успешно!</b>
+
+👤 <b>Ваш профиль:</b>
+├ Имя: @{username}
+├ Баланс: {balance} ⭐
+└ ID: {message.from_user.id}
+
+<b>Выберите действие:</b>
+        """, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="deposit_menu")],
+            [InlineKeyboardButton(text="💸 Вывести средства", callback_data="withdraw")],
+            [InlineKeyboardButton(text="🎮 Играть на сайте", url=website_url_with_params)],
+            [InlineKeyboardButton(text="📊 Моя статистика", callback_data="my_stats")],
+            [InlineKeyboardButton(text="🎁 Активировать промокод", callback_data="activate_promo")]
+        ]))
+    else:
+        await message.answer("❌ Неверный пароль!\nПопробуйте снова или восстановите доступ через поддержку.")
+    
+    await state.clear()
+
+# ========== КОМАНДА /profile ==========
+@dp.message(Command("profile"))
+async def cmd_profile(message: Message):
+    user_id = message.from_user.id
+    user_data = get_user_by_id(user_id)
+    
+    if not user_data:
+        await message.answer("❌ У вас нет аккаунта!\nЗарегистрируйтесь: /start")
+        return
+    
+    balance = get_balance(user_id)
+    username = user_data[1]
+    
+    stats_text = f"""
+📊 <b>Ваш профиль</b>
+
+👤 <b>Основная информация:</b>
+├ Имя: @{username}
+├ Баланс: {balance} ⭐
+└ ID: {user_id}
+
+💰 <b>Финансовая статистика:</b>
+├ Всего пополнено: {user_data[4]} ⭐
+├ Всего выведено: {user_data[5]} ⭐
+├ Поставлено всего: {user_data[6]} ⭐
+├ Выиграно всего: {user_data[7]} ⭐
+└ Проиграно всего: {user_data[8]} ⭐
+
+🕐 <b>Дата регистрации:</b> {user_data[12]}
+    """
+    
+    await message.answer(stats_text)
+
+# ========== КОМАНДА /play ==========
 @dp.message(Command("play"))
 async def cmd_play(message: Message):
     user_id = message.from_user.id
-    session_token = get_session_by_user(user_id)
+    user_data = get_user_by_id(user_id)
     
-    if not session_token:
-        session_token = create_api_session(user_id)
+    if not user_data:
+        await message.answer("❌ У вас нет аккаунта!\nЗарегистрируйтесь: /start")
+        return
     
+    session_token = create_api_session(user_id)
     website_url_with_params = f"{WEBSITE_URL}?user_id={user_id}&session_token={session_token}"
     
     play_text = f"""
@@ -413,6 +658,7 @@ async def cmd_play(message: Message):
 
 Нажмите кнопку ниже, чтобы перейти на сайт и начать играть!
 
+Ваш баланс: {get_balance(user_id)} ⭐
 Ваш баланс будет автоматически синхронизирован.
     """
     
@@ -421,26 +667,6 @@ async def cmd_play(message: Message):
     ])
     
     await message.answer(play_text, reply_markup=keyboard)
-
-# ========== КОМАНДА /balance ==========
-@dp.message(Command("balance"))
-async def cmd_balance(message: Message):
-    user_id = message.from_user.id
-    balance = get_balance(user_id)
-    
-    balance_text = f"""
-💰 <b>Ваш баланс:</b> {balance} ⭐
-
-💳 <b>Минимальные суммы:</b>
-• Пополнение: от {MIN_DEPOSIT} ⭐
-• Вывод: от {MIN_WITHDRAWAL} ⭐
-
-🎮 <b>Для игры:</b>
-• Нажмите /play для перехода на сайт
-• Или нажмите "Играть на сайте" в меню /start
-    """
-    
-    await message.answer(balance_text)
 
 # ========== АДМИН КОМАНДА /admin ==========
 @dp.message(Command("admin"))
@@ -461,6 +687,7 @@ async def cmd_admin(message: Message):
 💰 Общий баланс: {stats['total_balance']} ⭐
 📥 Всего пополнений: {stats['total_deposits']} ⭐
 📤 Всего выводов: {stats['total_withdrawals']} ⭐
+🎰 Всего поставлено: {stats['total_wagered']} ⭐
 ⏳ Ожидают вывода: {stats['pending_withdrawals']} заявок
 
 <b>Выберите действие:</b>
@@ -477,364 +704,89 @@ async def cmd_admin(message: Message):
     
     await message.answer(admin_text, reply_markup=keyboard)
 
-# ========== АДМИН: УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ ==========
-@dp.callback_query(F.data == "admin_users")
-async def admin_users_menu(callback: types.CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔨 Забанить пользователя", callback_data="admin_ban")],
-        [InlineKeyboardButton(text="✅ Разбанить пользователя", callback_data="admin_unban")],
-        [InlineKeyboardButton(text="📋 Список пользователей", callback_data="admin_list_users")],
-        [InlineKeyboardButton(text="🔙 Назад в админку", callback_data="admin_back")]
-    ])
-    
-    await callback.message.edit_text("👥 <b>Управление пользователями:</b>", reply_markup=keyboard)
-    await callback.answer()
-
-@dp.callback_query(F.data == "admin_ban")
-async def admin_ban(callback: types.CallbackQuery):
-    await callback.message.answer("Введите ID пользователя для бана:")
-    await AdminStates.ban_user.set()
-    await callback.answer()
-
-@dp.message(AdminStates.ban_user)
-async def process_ban(message: Message, state: FSMContext):
-    try:
-        user_id = int(message.text)
-        user = get_user(user_id)
-        
-        if not user:
-            await message.answer("❌ Пользователь не найден!")
-            return
-        
-        ban_user(user_id)
-        await message.answer(f"✅ Пользователь {user_id} забанен!")
-        
-        # Уведомляем пользователя
-        try:
-            await bot.send_message(user_id, "⛔ Ваш аккаунт был заблокирован администратором.")
-        except:
-            pass
-        
-    except ValueError:
-        await message.answer("❌ Введите корректный ID пользователя!")
-    finally:
-        await state.clear()
-
-@dp.callback_query(F.data == "admin_unban")
-async def admin_unban(callback: types.CallbackQuery):
-    await callback.message.answer("Введите ID пользователя для разбана:")
-    await AdminStates.unban_user.set()
-    await callback.answer()
-
-@dp.message(AdminStates.unban_user)
-async def process_unban(message: Message, state: FSMContext):
-    try:
-        user_id = int(message.text)
-        user = get_user(user_id)
-        
-        if not user:
-            await message.answer("❌ Пользователь не найден!")
-            return
-        
-        unban_user(user_id)
-        await message.answer(f"✅ Пользователь {user_id} разбанен!")
-        
-        # Уведомляем пользователя
-        try:
-            await bot.send_message(user_id, "✅ Ваш аккаунт разблокирован администратором.")
-        except:
-            pass
-        
-    except ValueError:
-        await message.answer("❌ Введите корректный ID пользователя!")
-    finally:
-        await state.clear()
-
-@dp.callback_query(F.data == "admin_list_users")
-async def admin_list_users(callback: types.CallbackQuery):
-    users = get_all_users()
-    
-    if not users:
-        await callback.message.answer("📭 Пользователей нет!")
-        return
-    
-    text = "📋 <b>Список пользователей:</b>\n\n"
-    
-    for user in users[:50]:  # Первые 50 пользователей
-        user_id, username, balance, is_banned = user
-        status = "🔴 БАН" if is_banned else "🟢 АКТИВЕН"
-        text += f"👤 {username or 'Без имени'}\n"
-        text += f"🆔 ID: {user_id}\n"
-        text += f"💰 Баланс: {balance} ⭐\n"
-        text += f"📊 Статус: {status}\n"
-        text += "─" * 30 + "\n"
-    
-    if len(users) > 50:
-        text += f"\n📊 ... и еще {len(users) - 50} пользователей"
-    
-    await callback.message.answer(text)
-    await callback.answer()
-
-# ========== АДМИН: УПРАВЛЕНИЕ БАЛАНСАМИ ==========
-@dp.callback_query(F.data == "admin_balance")
-async def admin_balance_menu(callback: types.CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Начислить баланс", callback_data="admin_add_balance")],
-        [InlineKeyboardButton(text="➖ Снять баланс", callback_data="admin_remove_balance")],
-        [InlineKeyboardButton(text="🔙 Назад в админку", callback_data="admin_back")]
-    ])
-    
-    await callback.message.edit_text("💰 <b>Управление балансами:</b>", reply_markup=keyboard)
-    await callback.answer()
-
-@dp.callback_query(F.data == "admin_add_balance")
-async def admin_add_balance(callback: types.CallbackQuery):
-    await callback.message.answer("Введите данные в формате:\n<code>ID_пользователя СУММА</code>\n\nПример: <code>123456789 100</code>")
-    await AdminStates.add_balance.set()
-    await callback.answer()
-
-@dp.message(AdminStates.add_balance)
-async def process_add_balance(message: Message, state: FSMContext):
-    try:
-        parts = message.text.split()
-        if len(parts) != 2:
-            raise ValueError
-        
-        user_id = int(parts[0])
-        amount = int(parts[1])
-        
-        user = get_user(user_id)
-        if not user:
-            await message.answer("❌ Пользователь не найден!")
-            return
-        
-        new_balance = update_balance(user_id, amount, is_deposit=True)
-        
-        await message.answer(f"✅ Баланс начислен!\n\n👤 Пользователь: {user_id}\n💰 Начислено: {amount} ⭐\n🏦 Новый баланс: {new_balance} ⭐")
-        
-        # Уведомляем пользователя
-        try:
-            await bot.send_message(user_id, f"💰 Вам начислено {amount} ⭐!\n🏦 Новый баланс: {new_balance} ⭐")
-        except:
-            pass
-        
-    except ValueError:
-        await message.answer("❌ Неверный формат! Используйте: <code>ID СУММА</code>")
-    finally:
-        await state.clear()
-
-@dp.callback_query(F.data == "admin_remove_balance")
-async def admin_remove_balance(callback: types.CallbackQuery):
-    await callback.message.answer("Введите данные в формате:\n<code>ID_пользователя СУММА</code>\n\nПример: <code>123456789 100</code>")
-    await AdminStates.remove_balance.set()
-    await callback.answer()
-
-@dp.message(AdminStates.remove_balance)
-async def process_remove_balance(message: Message, state: FSMContext):
-    try:
-        parts = message.text.split()
-        if len(parts) != 2:
-            raise ValueError
-        
-        user_id = int(parts[0])
-        amount = int(parts[1])
-        
-        user = get_user(user_id)
-        if not user:
-            await message.answer("❌ Пользователь не найден!")
-            return
-        
-        balance = get_balance(user_id)
-        if balance < amount:
-            await message.answer(f"❌ У пользователя недостаточно средств!\n💰 Текущий баланс: {balance} ⭐")
-            return
-        
-        new_balance = update_balance(user_id, amount, is_deposit=False)
-        
-        await message.answer(f"✅ Баланс снят!\n\n👤 Пользователь: {user_id}\n💰 Снято: {amount} ⭐\n🏦 Новый баланс: {new_balance} ⭐")
-        
-        # Уведомляем пользователя
-        try:
-            await bot.send_message(user_id, f"💰 С вашего баланса снято {amount} ⭐!\n🏦 Новый баланс: {new_balance} ⭐")
-        except:
-            pass
-        
-    except ValueError:
-        await message.answer("❌ Неверный формат! Используйте: <code>ID СУММА</code>")
-    finally:
-        await state.clear()
-
-# ========== АДМИН: РАССЫЛКА ==========
-@dp.callback_query(F.data == "admin_broadcast")
-async def admin_broadcast(callback: types.CallbackQuery):
-    await callback.message.answer("Введите сообщение для рассылки всем пользователям:")
-    await AdminStates.broadcast_message.set()
-    await callback.answer()
-
-@dp.message(AdminStates.broadcast_message)
-async def process_broadcast(message: Message, state: FSMContext):
-    users = get_all_users()
-    total = len(users)
-    success = 0
-    failed = 0
-    
-    progress_msg = await message.answer(f"📢 Начинаю рассылку...\n👥 Всего пользователей: {total}")
-    
-    for user in users:
-        user_id = user[0]
-        try:
-            await bot.send_message(user_id, f"📢 <b>Сообщение от администратора:</b>\n\n{message.text}")
-            success += 1
-            
-            if success % 10 == 0:
-                await progress_msg.edit_text(f"📢 Рассылка...\n✅ Отправлено: {success}/{total}")
-                
-            await asyncio.sleep(0.1)  # Задержка чтобы не попасть в лимиты
-            
-        except Exception as e:
-            failed += 1
-    
-    await progress_msg.edit_text(f"✅ Рассылка завершена!\n\n📊 Результаты:\n✅ Успешно: {success}\n❌ Не отправлено: {failed}")
-    await state.clear()
-
-# ========== АДМИН: ПРОМОКОДЫ ==========
-@dp.callback_query(F.data == "admin_create_promo")
-async def admin_create_promo(callback: types.CallbackQuery):
-    await callback.message.answer("Введите код промокода (только буквы и цифры):")
+# ========== АКТИВАЦИЯ ПРОМОКОДА ==========
+@dp.callback_query(F.data == "activate_promo")
+async def activate_promo_callback(callback: types.CallbackQuery):
+    await callback.message.answer("✏️ <b>Введите промокод:</b>")
     await AdminStates.create_promo.set()
     await callback.answer()
 
 @dp.message(AdminStates.create_promo)
-async def process_promo_code(message: Message, state: FSMContext):
+async def process_promo(message: Message, state: FSMContext):
     promo_code = message.text.strip().upper()
+    user_id = message.from_user.id
     
-    # Проверка формата
-    if not promo_code.isalnum():
-        await message.answer("❌ Код должен содержать только буквы и цифры!")
-        return
+    result = use_promocode(user_id, promo_code)
     
-    await state.update_data(promo_code=promo_code)
-    await message.answer("Введите сумму промокода (в звездах):")
-    await AdminStates.promo_amount.set()
-
-@dp.message(AdminStates.promo_amount)
-async def process_promo_amount(message: Message, state: FSMContext):
-    try:
-        amount = int(message.text)
-        if amount <= 0:
-            raise ValueError
-        
-        await state.update_data(amount=amount)
-        await message.answer("Введите количество использований (макс. 1000):")
-        await AdminStates.promo_uses.set()
-        
-    except ValueError:
-        await message.answer("❌ Введите корректное число!")
-
-@dp.message(AdminStates.promo_uses)
-async def process_promo_uses(message: Message, state: FSMContext):
-    try:
-        max_uses = int(message.text)
-        if max_uses <= 0 or max_uses > 1000:
-            raise ValueError
-        
-        await state.update_data(max_uses=max_uses)
-        await message.answer("Введите срок действия в днях (1-365):")
-        await AdminStates.promo_expires.set()
-        
-    except ValueError:
-        await message.answer("❌ Введите число от 1 до 1000!")
-
-@dp.message(AdminStates.promo_expires)
-async def process_promo_expires(message: Message, state: FSMContext):
-    try:
-        expires_days = int(message.text)
-        if expires_days <= 0 or expires_days > 365:
-            raise ValueError
-        
-        data = await state.get_data()
-        promo_code = data['promo_code']
-        amount = data['amount']
-        max_uses = data['max_uses']
-        
-        create_promocode(promo_code, amount, max_uses, expires_days)
-        
+    if result:
+        new_balance = get_balance(user_id)
         await message.answer(
-            f"✅ Промокод создан!\n\n"
-            f"🎁 Код: <code>{promo_code}</code>\n"
-            f"💰 Сумма: {amount} ⭐\n"
-            f"🔢 Использований: {max_uses}\n"
-            f"⏰ Срок: {expires_days} дней\n\n"
-            f"📋 Для активации: /start → 🎁 Активировать промокод"
+            f"✅ <b>Промокод активирован!</b>\n\n"
+            f"💰 Начислено: {result} ⭐\n"
+            f"🏦 Новый баланс: {new_balance} ⭐"
         )
-        
-    except ValueError:
-        await message.answer("❌ Введите число от 1 до 365!")
-    finally:
-        await state.clear()
-
-@dp.callback_query(F.data == "admin_list_promos")
-async def admin_list_promos(callback: types.CallbackQuery):
-    promos = get_promocodes()
+    else:
+        await message.answer("❌ <b>Промокод недействителен или уже использован!</b>")
     
-    if not promos:
-        await callback.message.answer("🎁 Промокодов нет!")
+    await state.clear()
+
+# ========== МОЯ СТАТИСТИКА ==========
+@dp.callback_query(F.data == "my_stats")
+async def my_stats_callback(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    user_data = get_user_by_id(user_id)
+    
+    if not user_data:
+        await callback.answer("❌ У вас нет аккаунта!")
         return
     
-    text = "📋 <b>Список промокодов:</b>\n\n"
+    balance = get_balance(user_id)
     
-    for promo in promos:
-        code, amount, uses_left, max_uses, expires_at = promo
-        expires_date = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
-        days_left = (expires_date - datetime.now()).days
-        
-        text += f"🎁 Код: <code>{code}</code>\n"
-        text += f"💰 Сумма: {amount} ⭐\n"
-        text += f"📊 Использовано: {max_uses - uses_left}/{max_uses}\n"
-        text += f"⏰ Осталось дней: {max(0, days_left)}\n"
-        text += "─" * 30 + "\n"
+    # Рассчитываем проценты
+    total_wagered = user_data[6] or 0
+    total_won = user_data[7] or 0
+    total_lost = user_data[8] or 0
     
-    await callback.message.answer(text)
-    await callback.answer()
-
-# ========== АДМИН: СТАТИСТИКА ==========
-@dp.callback_query(F.data == "admin_stats")
-async def admin_stats(callback: types.CallbackQuery):
-    stats = get_stats()
+    win_rate = (total_won / total_wagered * 100) if total_wagered > 0 else 0
+    loss_rate = (total_lost / total_wagered * 100) if total_wagered > 0 else 0
     
-    text = f"""
-📊 <b>Полная статистика казино:</b>
+    stats_text = f"""
+📊 <b>Ваша игровая статистика</b>
 
-👥 <b>Пользователи:</b>
-• Всего пользователей: {stats['total_users']}
-• Общий баланс: {stats['total_balance']} ⭐
+💰 <b>Финансы:</b>
+├ Текущий баланс: {balance} ⭐
+├ Всего пополнено: {user_data[4]} ⭐
+└ Всего выведено: {user_data[5]} ⭐
 
-💸 <b>Финансы:</b>
-• Всего пополнений: {stats['total_deposits']} ⭐
-• Всего выводов: {stats['total_withdrawals']} ⭐
-• Ожидают вывода: {stats['pending_withdrawals']} заявок
+🎰 <b>Игровая статистика:</b>
+├ Всего поставлено: {total_wagered} ⭐
+├ Всего выиграно: {total_won} ⭐
+├ Всего проиграно: {total_lost} ⭐
+├ Процент выигрышей: {win_rate:.1f}%
+└ Процент проигрышей: {loss_rate:.1f}%
 
-⚡ <b>Средние показатели:</b>
-• Средний депозит: {stats['total_deposits'] // max(1, stats['total_users'])} ⭐
-• Средний баланс: {stats['total_balance'] // max(1, stats['total_users'])} ⭐
+📅 <b>Дата регистрации:</b> {user_data[12]}
     """
     
-    await callback.message.answer(text)
-    await callback.answer()
-
-# ========== АДМИН: НАЗАД ==========
-@dp.callback_query(F.data == "admin_back")
-async def admin_back(callback: types.CallbackQuery):
-    await cmd_admin(callback.message)
+    await callback.message.answer(stats_text)
     await callback.answer()
 
 # ========== ПОПОЛНЕНИЕ БАЛАНСА ==========
 @dp.callback_query(F.data == "deposit_menu")
 async def deposit_menu(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    user_data = get_user_by_id(user_id)
+    
+    if not user_data:
+        await callback.message.answer("❌ У вас нет аккаунта!\nЗарегистрируйтесь: /start")
+        await callback.answer()
+        return
+    
     menu_text = f"""
 💰 <b>Пополнение баланса через Telegram Stars</b>
 
 ✨ <b>Минимальное пополнение:</b> {MIN_DEPOSIT} ⭐
+💰 <b>Ваш баланс:</b> {get_balance(user_id)} ⭐
 
 Выберите сумму пополнения:
 • {MIN_DEPOSIT} ⭐ (минимальная сумма)
@@ -852,7 +804,7 @@ async def deposit_menu(callback: types.CallbackQuery):
         [InlineKeyboardButton(text="⭐ 250 звёзд", callback_data="pay_250"),
          InlineKeyboardButton(text="⭐ 500 звёзд", callback_data="pay_500")],
         [InlineKeyboardButton(text="⭐ 1000 звёзд", callback_data="pay_1000")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="back")]
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_menu")]
     ])
     
     await callback.message.edit_text(menu_text, reply_markup=keyboard)
@@ -860,6 +812,14 @@ async def deposit_menu(callback: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("pay_"))
 async def process_payment(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    user_data = get_user_by_id(user_id)
+    
+    if not user_data:
+        await callback.message.answer("❌ У вас нет аккаунта!")
+        await callback.answer()
+        return
+    
     amount = int(callback.data.split("_")[1])
     
     if amount < MIN_DEPOSIT:
@@ -916,6 +876,7 @@ async def successful_payment(message: Message):
     
     await message.answer(success_text, reply_markup=keyboard)
     
+    # Уведомление админам
     for admin_id in ADMIN_IDS:
         try:
             await bot.send_message(
@@ -932,8 +893,15 @@ async def successful_payment(message: Message):
 
 # ========== ВЫВОД СРЕДСТВ ==========
 @dp.callback_query(F.data == "withdraw")
-async def withdraw_callback(callback: types.CallbackQuery):
+async def withdraw_callback(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
+    user_data = get_user_by_id(user_id)
+    
+    if not user_data:
+        await callback.message.answer("❌ У вас нет аккаунта!")
+        await callback.answer()
+        return
+    
     balance = get_balance(user_id)
     
     if balance < MIN_WITHDRAWAL:
@@ -1012,6 +980,7 @@ async def withdraw_username_handler(message: Message, state: FSMContext):
     await message.answer(success_text)
     await state.clear()
     
+    # Уведомление админам
     for admin_id in ADMIN_IDS:
         try:
             await bot.send_message(
@@ -1028,53 +997,9 @@ async def withdraw_username_handler(message: Message, state: FSMContext):
         except:
             pass
 
-# ========== КОМАНДА /help ==========
-@dp.message(Command("help"))
-async def cmd_help(message: Message):
-    help_text = """
-🎮 <b>BezdarMoney Casino - Помощь</b>
-
-<b>Основные команды:</b>
-/start - Главное меню
-/play - Перейти на игровой сайт
-/balance - Проверить баланс
-/help - Эта справка
-
-<b>Пополнение баланса:</b>
-1. Нажмите "💰 Пополнить баланс"
-2. Выберите сумму
-3. Оплатите через Telegram Stars
-4. Баланс обновится автоматически
-
-<b>Вывод средств:</b>
-1. Нажмите "💸 Вывести средства"
-2. Введите сумму (от 300⭐)
-3. Введите ваш Telegram username
-4. Администратор свяжется с вами
-
-<b>Игра на сайте:</b>
-1. Нажмите "🎮 Играть на сайте"
-2. Войдите с Telegram
-3. Ваш баланс синхронизируется
-4. Начните играть!
-
-<b>Техподдержка:</b>
-@{SUPPORT_USERNAME}
-    """.format(SUPPORT_USERNAME=SUPPORT_USERNAME)
-    
-    await message.answer(help_text)
-
 # ========== API ДЛЯ САЙТА ==========
 async def api_get_balance(request):
     try:
-        # Разрешаем CORS
-        if request.method == 'OPTIONS':
-            response = web.Response()
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-            return response
-        
         data = await request.json()
         user_id = data.get('user_id')
         session_token = data.get('session_token')
@@ -1092,11 +1017,13 @@ async def api_get_balance(request):
             return web.json_response({'error': 'Invalid session'}, status=401)
         
         balance = get_balance(user_id)
+        user_data = get_user_by_id(user_id)
         
         response = web.json_response({
             'success': True,
             'balance': balance,
             'user_id': user_id,
+            'username': user_data[1] if user_data else '',
             'min_deposit': MIN_DEPOSIT,
             'min_withdrawal': MIN_WITHDRAWAL
         })
@@ -1111,14 +1038,6 @@ async def api_get_balance(request):
 
 async def api_create_session(request):
     try:
-        # Разрешаем CORS
-        if request.method == 'OPTIONS':
-            response = web.Response()
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-            return response
-        
         data = await request.json()
         user_id = data.get('user_id')
         
@@ -1128,11 +1047,13 @@ async def api_create_session(request):
         user_id = int(user_id)
         session_token = create_api_session(user_id)
         balance = get_balance(user_id)
+        user_data = get_user_by_id(user_id)
         
         response = web.json_response({
             'success': True,
             'session_token': session_token,
             'user_id': user_id,
+            'username': user_data[1] if user_data else '',
             'balance': balance,
             'min_deposit': MIN_DEPOSIT,
             'min_withdrawal': MIN_WITHDRAWAL
@@ -1147,14 +1068,6 @@ async def api_create_session(request):
 
 async def api_webhook(request):
     try:
-        # Разрешаем CORS
-        if request.method == 'OPTIONS':
-            response = web.Response()
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-            return response
-        
         data = await request.json()
         secret = data.get('secret')
         user_id = data.get('user_id')
@@ -1176,9 +1089,11 @@ async def api_webhook(request):
         
         # Если выигрыш - добавляем баланс, если проигрыш - вычитаем
         if win:
-            new_balance = update_balance(user_id, abs(amount), is_deposit=True)
+            new_balance = update_balance(user_id, abs(amount), is_deposit=True, game_type=game_type, win_amount=abs(amount))
+            record_game_history(user_id, game_type, abs(amount), abs(amount), 'win')
         else:
-            new_balance = update_balance(user_id, abs(amount), is_deposit=False)
+            new_balance = update_balance(user_id, abs(amount), is_deposit=False, game_type=game_type)
+            record_game_history(user_id, game_type, abs(amount), 0, 'loss')
         
         response = web.json_response({
             'success': True,
@@ -1234,7 +1149,7 @@ async def main():
     logger.info("🤖 Запуск Telegram бота...")
     await dp.start_polling(bot)
     
-    # Ожидаем завершения веб-сервера (хотя это никогда не произойдет)
+    # Ожидаем завершения веб-сервера
     await web_task
 
 if __name__ == '__main__':
