@@ -1261,6 +1261,47 @@ balanceCard.innerHTML += `
 `;
 
 document.getElementById('syncBtn').addEventListener('click', syncWithBot);
+        // Функция для проверки баланса через бота
+async function checkBalance() {
+    // Здесь должна быть интеграция с вашим API
+    // Для демо используем localStorage
+    const savedBalance = localStorage.getItem('tg_stars_balance');
+    if (savedBalance) {
+        balance = parseFloat(savedBalance);
+        updateBalance();
+    }
+}
+
+// Функция для синхронизации с ботом
+function syncWithBot() {
+    // В реальном проекте здесь должен быть Webhook или API запрос
+    // Для демо имитируем синхронизацию
+    showNotification('✅ Баланс синхронизирован с ботом');
+}
+
+// Добавить в init() функцию:
+function init() {
+    updateBalance();
+    loadGames();
+    setupEventListeners();
+    
+    // Проверяем баланс при загрузке
+    checkBalance();
+    
+    // Демо: имитация синхронизации с ботом
+    setInterval(syncWithBot, 60000); // Каждую минуту
+}
+
+// Добавить кнопку синхронизации в баланс
+const balanceCard = document.querySelector('.balance-card');
+balanceCard.innerHTML += `
+    <button class="btn btn-sync" id="syncBtn" style="margin-left: 10px; padding: 8px 15px; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
+        <i class="fas fa-sync-alt"></i>
+    </button>
+`;
+
+document.getElementById('syncBtn').addEventListener('click', syncWithBot);
     </script>
 </body>
 </html>
+
