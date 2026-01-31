@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BezdarMoney | Казино</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Telegram Web App -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -63,6 +67,47 @@
             display: flex;
             align-items: center;
             gap: 20px;
+        }
+        
+        .telegram-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: 15px;
+        }
+        
+        .telegram-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f0b90b, #ffd700);
+        }
+        
+        .telegram-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .telegram-avatar .avatar-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #0a1931;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .user-username {
+            font-size: 12px;
+            color: #8a94a6;
         }
         
         .balance-card {
@@ -130,9 +175,65 @@
             color: white;
         }
         
+        .btn-telegram {
+            background: linear-gradient(135deg, #0088cc 0%, #005999 100%);
+            color: white;
+        }
+        
         .btn:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+        
+        .login-section {
+            text-align: center;
+            margin: 40px auto;
+            padding: 40px 20px;
+            max-width: 600px;
+        }
+        
+        .login-card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+            border-radius: 20px;
+            padding: 50px 40px;
+            border: 1px solid rgba(240, 185, 11, 0.2);
+        }
+        
+        .login-icon {
+            font-size: 72px;
+            color: #f0b90b;
+            margin-bottom: 20px;
+        }
+        
+        .login-title {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 28px;
+        }
+        
+        .login-description {
+            color: #8a94a6;
+            margin-bottom: 30px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        .login-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #0088cc 0%, #005999 100%);
+            color: white;
+            padding: 18px 40px;
+            border-radius: 15px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 18px;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .login-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 136, 204, 0.4);
         }
         
         .games-section {
@@ -611,160 +712,50 @@
             }
         }
     </style>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script>
-    // Telegram Web App
-    let tg = window.Telegram.WebApp;
     
-    // Глобальные переменные для пользователя
-    let tgUser = null;
-    let isAuthorized = false;
-    
-    // Проверяем, загружен ли Telegram Web App
-    function initTelegram() {
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            tgUser = tg.initDataUnsafe.user;
-            isAuthorized = true;
-            console.log('Telegram user authorized:', tgUser);
-            
-            // Показываем пользователю
-            updateUserInfo();
-            
-            // Запрашиваем баланс у бота
-            loadUserBalance();
-            
-            // Разворачиваем приложение на весь экран
-            tg.expand();
-            
-            // Меняем кнопки в хедере
-            updateHeaderForTelegram();
-        } else {
-            console.log('Not in Telegram Web App');
-            showTelegramLogin();
-        }
-    }
-    
-    // Обновляем информацию о пользователе
-    function updateUserInfo() {
-        if (!tgUser) return;
+    <script>
+        // ===================== TELEGRAM INTEGRATION =====================
+        let tg = window.Telegram?.WebApp;
+        let tgUser = null;
+        let isAuthorized = false;
         
-        const userInfoDiv = document.querySelector('.user-info');
-        if (userInfoDiv) {
+        // Проверка авторизации Telegram
+        function checkTelegramAuth() {
+            if (tg?.initDataUnsafe?.user) {
+                tgUser = tg.initDataUnsafe.user;
+                isAuthorized = true;
+                console.log('✅ Telegram user authorized:', tgUser);
+                showAuthorizedUI();
+                return true;
+            }
+            return false;
+        }
+        
+        // Показать UI для авторизованного пользователя
+        function showAuthorizedUI() {
             // Добавляем аватар пользователя
-            const avatarHtml = `
-                <div style="display: flex; align-items: center; gap: 10px; margin-right: 15px;">
-                    <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden;">
-                        <img src="${tgUser.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" 
-                             style="width: 100%; height: 100%; object-fit: cover;">
+            const userInfo = document.querySelector('.user-info');
+            if (userInfo && tgUser) {
+                const telegramUserDiv = document.createElement('div');
+                telegramUserDiv.className = 'telegram-user';
+                telegramUserDiv.innerHTML = `
+                    <div class="telegram-avatar">
+                        ${tgUser.photo_url ? 
+                            `<img src="${tgUser.photo_url}" alt="${tgUser.first_name}">` : 
+                            `<div class="avatar-placeholder">${tgUser.first_name ? tgUser.first_name[0] : 'U'}</div>`
+                        }
                     </div>
                     <div>
-                        <div style="font-weight: 600; font-size: 14px;">${tgUser.first_name || 'Пользователь'}</div>
-                        <div style="font-size: 12px; color: #8a94a6;">@${tgUser.username || 'без username'}</div>
+                        <div class="user-name">${tgUser.first_name || 'Игрок'}</div>
+                        <div class="user-username">@${tgUser.username || 'без username'}</div>
                     </div>
-                </div>
-            `;
-            
-            // Добавляем аватар перед балансом
-            const balanceCard = userInfoDiv.querySelector('.balance-card');
-            if (balanceCard) {
-                balanceCard.insertAdjacentHTML('beforebegin', avatarHtml);
-            }
-        }
-    }
-    
-    // Обновляем хедер для Telegram
-    function updateHeaderForTelegram() {
-        const header = document.querySelector('header');
-        if (header) {
-            header.style.background = 'rgba(26, 26, 46, 0.98)';
-            header.style.backdropFilter = 'blur(20px)';
-        }
-        
-        // Добавляем кнопку закрытия
-        const headerContent = document.querySelector('.header-content');
-        if (headerContent) {
-            const closeBtn = `
-                <button id="tgCloseBtn" style="
-                    background: rgba(231, 76, 60, 0.2);
-                    color: #e74c3c;
-                    border: 1px solid rgba(231, 76, 60, 0.3);
-                    border-radius: 10px;
-                    padding: 8px 15px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    display: flex;
-                    align-items: center;
-                    gap: 5px;
-                    transition: all 0.3s;
-                ">
-                    <i class="fas fa-times"></i> Закрыть
-                </button>
-            `;
-            
-            headerContent.insertAdjacentHTML('beforeend', closeBtn);
-            
-            document.getElementById('tgCloseBtn').addEventListener('click', () => {
-                tg.close();
-            });
-        }
-    }
-    
-    // Показываем кнопку входа через Telegram
-    function showTelegramLogin() {
-        const gamesSection = document.querySelector('.games-section');
-        if (!gamesSection) return;
-        
-        const loginSection = document.createElement('div');
-        loginSection.className = 'login-section';
-        loginSection.innerHTML = `
-            <div style="text-align: center; margin: 40px 0; padding: 40px 20px; background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); border-radius: 20px; border: 1px solid rgba(240, 185, 11, 0.2);">
-                <h2 style="color: #f0b90b; margin-bottom: 20px; font-size: 32px;">
-                    <i class="fab fa-telegram"></i> Вход через Telegram
-                </h2>
-                <p style="color: #8a94a6; margin-bottom: 30px; font-size: 16px; line-height: 1.5;">
-                    Для доступа к играм необходимо авторизоваться через Telegram.<br>
-                    Это обеспечит безопасность ваших средств и позволит синхронизировать баланс.
-                </p>
-                <a href="https://t.me/BezdarMoneybot?start=site_login" target="_blank" 
-                   style="display: inline-block; background: linear-gradient(135deg, #0088cc 0%, #005999 100%); 
-                          color: white; padding: 18px 40px; border-radius: 15px; text-decoration: none; 
-                          font-weight: 700; font-size: 18px; transition: all 0.3s;"
-                   onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 30px rgba(0, 136, 204, 0.4)';"
-                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                    <i class="fab fa-telegram"></i> Войти через Telegram
-                </a>
-                <div style="margin-top: 30px; color: #8a94a6; font-size: 14px;">
-                    <p><i class="fas fa-shield-alt"></i> Ваши данные защищены</p>
-                    <p><i class="fas fa-sync-alt"></i> Баланс синхронизируется с ботом</p>
-                    <p><i class="fas fa-gamepad"></i> Мгновенный доступ к играм</p>
-                </div>
-            </div>
-        `;
-        
-        gamesSection.insertBefore(loginSection, gamesSection.firstChild);
-        
-        // Скрываем игры до авторизации
-        document.getElementById('gamesGrid').style.display = 'none';
-        document.querySelector('.bonus-section').style.display = 'none';
-        document.querySelector('.bot-section').style.display = 'none';
-    }
-    
-    // Загружаем баланс пользователя из бота
-    async function loadUserBalance() {
-        if (!tgUser) return;
-        
-        try {
-            // Здесь должен быть запрос к вашему API для получения баланса
-            // Для демо используем localStorage
-            const savedBalance = localStorage.getItem(`balance_${tgUser.id}`);
-            if (savedBalance) {
-                balance = parseInt(savedBalance);
-                updateBalance();
-                showNotification(`Добро пожаловать, ${tgUser.first_name}!`);
-            } else {
-                // Показываем демо баланс
-                balance = 1000;
-                updateBalance();
+                `;
+                
+                // Добавляем перед балансом
+                const balanceCard = userInfo.querySelector('.balance-card');
+                if (balanceCard) {
+                    userInfo.insertBefore(telegramUserDiv, balanceCard);
+                }
             }
             
             // Показываем игры
@@ -772,134 +763,82 @@
             document.querySelector('.bonus-section').style.display = 'block';
             document.querySelector('.bot-section').style.display = 'block';
             
-        } catch (error) {
-            console.error('Error loading balance:', error);
-        }
-    }
-    
-    // Инициализируем Telegram при загрузке
-    document.addEventListener('DOMContentLoaded', function() {
-        // Проверяем, есть ли Telegram Web App
-        if (window.Telegram && window.Telegram.WebApp) {
-            initTelegram();
-        } else {
-            // Не в Telegram - показываем обычный сайт с кнопкой входа
-            showTelegramLogin();
+            // Загружаем баланс
+            loadUserBalance();
         }
         
-        // Инициализируем основной функционал
-        if (typeof init === 'function') {
-            init();
-        }
-    });
-    
-    // Функция для обновления баланса через бота
-    async function syncWithBot() {
-        if (!tgUser) {
-            showNotification('Сначала войдите через Telegram');
-            return;
-        }
-        
-        showNotification('🔄 Синхронизация с ботом...');
-        
-        // Демо: имитация синхронизации
-        setTimeout(() => {
-            const addedStars = Math.floor(Math.random() * 200) + 50;
-            balance += addedStars;
-            updateBalance();
-            localStorage.setItem(`balance_${tgUser.id}`, balance);
+        // Показать кнопку входа
+        function showLoginButton() {
+            const gamesSection = document.querySelector('.games-section');
+            if (!gamesSection) return;
             
-            showNotification(`✅ Баланс обновлен! +${addedStars} ⭐`);
-        }, 1500);
-    }
-</script>
-</head>
-<body>
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">
-                    <i class="fas fa-coins"></i>
-                    BezdarMoney
-                </div>
-                
-                <div class="user-info">
-                    <div class="balance-card">
-                        <i class="fas fa-wallet balance-icon"></i>
-                        <div class="balance-text">
-                            <span class="balance-label">Баланс</span>
-                            <span class="balance-amount" id="balance">0 ₽</span>
+            const loginHTML = `
+                <div class="login-section">
+                    <div class="login-card">
+                        <div class="login-icon">
+                            <i class="fab fa-telegram"></i>
                         </div>
-                    </div>
-                    
-                    <div class="balance-controls">
-                        <button class="btn btn-deposit" id="depositBtn">Пополнить</button>
-                        <button class="btn btn-withdraw" id="withdrawBtn">Вывести</button>
-                        <button class="btn btn-bonus" id="bonusBtn">Бонусы</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
-    
-    <div class="container">
-        <div class="games-section">
-            <h2 class="section-title">Игровые автоматы</h2>
-            
-            <div class="games-grid" id="gamesGrid">
-                <!-- Games loaded by JavaScript -->
-            </div>
-            
-            <div class="bonus-section">
-                <h3 class="bonus-title"><i class="fas fa-gift"></i> Бонусная система</h3>
-                <div class="bonus-content">
-                    <div class="bonus-item">
-                        <h4>Кешбек 5%</h4>
-                        <p>Возвращаем часть проигранных средств каждую неделю</p>
-                        <div class="warning">
-                            <i class="fas fa-exclamation-circle"></i>
-                            Временно не доступен
-                        </div>
-                    </div>
-                    <div class="bonus-item">
-                        <h4>Промокоды</h4>
-                        <p>Специальные коды для получения бонусов</p>
-                        <div class="warning">
-                            <i class="fas fa-exclamation-circle"></i>
-                            Скоро будут доступны
+                        <h2 class="login-title">Вход через Telegram</h2>
+                        <p class="login-description">
+                            Для игры необходимо авторизоваться через нашего Telegram-бота.<br>
+                            Это обеспечит безопасность вашего баланса и быстрый доступ.
+                        </p>
+                        <a href="https://t.me/BezdarMoneybot?start=site" 
+                           target="_blank" 
+                           class="login-button">
+                            <i class="fab fa-telegram"></i> Войти через Telegram
+                        </a>
+                        <div style="color: #8a94a6; font-size: 14px; margin-top: 30px;">
+                            <p><i class="fas fa-shield-alt"></i> Безопасная авторизация</p>
+                            <p><i class="fas fa-coins"></i> Синхронизация баланса</p>
+                            <p><i class="fas fa-bolt"></i> Мгновенный доступ</p>
                         </div>
                     </div>
                 </div>
-            </div>
+            `;
             
-            <div class="bot-section">
-                <h3 class="bot-title"><i class="fab fa-telegram"></i> Пополнение через Telegram-бота</h3>
-                <p>Все финансовые операции осуществляются через нашего бота</p>
-                <a href="https://t.me/BezdarMoneybot" target="_blank" class="bot-link">
-                    <i class="fab fa-telegram"></i> @BezdarMoneybot
-                </a>
-                <p>После пополнения в боте, средства автоматически появятся на вашем счете</p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Game Modal -->
-    <div class="game-modal" id="gameModal">
-        <div class="modal-content" id="modalContent">
-            <span class="close-modal" id="closeModal">&times;</span>
-            <h2 class="game-modal-title" id="gameModalTitle">Игра</h2>
-            <div class="game-area" id="gameArea">
-                <!-- Game content loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Game Data
+            // Вставляем перед играми
+            const gamesGrid = document.getElementById('gamesGrid');
+            gamesSection.insertBefore(document.createElement('div'), gamesGrid).outerHTML = loginHTML;
+            
+            // Скрываем игры до авторизации
+            document.getElementById('gamesGrid').style.display = 'none';
+            document.querySelector('.bonus-section').style.display = 'none';
+            document.querySelector('.bot-section').style.display = 'none';
+        }
+        
+        // Загрузка баланса пользователя
+        function loadUserBalance() {
+            if (!tgUser) return;
+            
+            // Проверяем localStorage
+            const savedBalance = localStorage.getItem(`balance_${tgUser.id}`);
+            if (savedBalance) {
+                balance = parseInt(savedBalance);
+                updateBalance();
+            } else {
+                // Начальный баланс для новых пользователей
+                balance = 1000;
+                updateBalance();
+                saveUserBalance();
+            }
+            
+            showNotification(`Добро пожаловать, ${tgUser.first_name || 'Игрок'}!`);
+        }
+        
+        // Сохранение баланса
+        function saveUserBalance() {
+            if (tgUser) {
+                localStorage.setItem(`balance_${tgUser.id}`, balance);
+            }
+        }
+        
+        // ===================== GAME LOGIC =====================
         let balance = 0;
         let gamesPlayedToday = 0;
         let currentGame = null;
         let currentBet = 100;
+        let gameActive = false;
         
         const games = [
             { id: 'mines', name: 'Мины', icon: 'fas fa-bomb', desc: 'Найди все безопасные клетки' },
@@ -923,15 +862,21 @@
             loadGames();
             setupEventListeners();
             
-            // Demo: Simulate bot deposit every 30 seconds
+            // Проверяем авторизацию Telegram
+            if (!checkTelegramAuth()) {
+                showLoginButton();
+            }
+            
+            // Демо: имитация получения звезд
             setInterval(() => {
-                if (Math.random() < 0.3 && balance < 1000) {
-                    const deposit = Math.floor(Math.random() * 500) + 100;
-                    balance += deposit;
+                if (isAuthorized && Math.random() < 0.05 && balance < 5000) {
+                    const bonus = Math.floor(Math.random() * 200) + 50;
+                    balance += bonus;
                     updateBalance();
-                    showNotification(`Бот пополнил ваш баланс на ${deposit} ₽`);
+                    saveUserBalance();
+                    showNotification(`🎁 Бонус от бота: +${bonus} ⭐`);
                 }
-            }, 30000);
+            }, 60000);
         }
         
         function loadGames() {
@@ -956,6 +901,13 @@
         }
         
         function openGame(gameId) {
+            if (!isAuthorized) {
+                alert('Сначала войдите через Telegram!');
+                return;
+            }
+            
+            if (gameActive) return;
+            
             currentGame = gameId;
             const game = games.find(g => g.id === gameId);
             document.getElementById('gameModalTitle').textContent = game.name;
@@ -973,13 +925,14 @@
             gameModal.style.display = 'flex';
         }
         
+        // ===================== MINES GAME =====================
         function loadMines() {
             gameArea.innerHTML = `
                 <div style="text-align: center;">
-                    <p style="color: #8a94a6; margin-bottom: 20px;">Открывайте клетки, избегая мин</p>
+                    <p style="color: #8a94a6; margin-bottom: 20px;">Открывайте клетки, избегая мин (5 мин)</p>
                     <div class="bet-controls">
-                        <input type="number" class="bet-input" id="minesBet" value="${currentBet}" min="10">
-                        <button class="game-btn" id="startMines">Играть</button>
+                        <input type="number" class="bet-input" id="minesBet" value="${currentBet}" min="10" max="${balance}">
+                        <button class="game-btn" id="startMines">Начать игру</button>
                     </div>
                     <div id="minesContainer" style="margin: 20px 0;"></div>
                     <div class="result-display" id="minesResult"></div>
@@ -990,14 +943,23 @@
         }
         
         function startMines() {
+            if (gameActive) return;
+            
             const bet = parseInt(document.getElementById('minesBet').value);
-            if (bet > balance || bet < 10) {
-                alert('Недостаточно средств');
+            if (isNaN(bet) || bet < 10) {
+                alert('Минимальная ставка: 10 ⭐');
                 return;
             }
             
+            if (bet > balance) {
+                alert('Недостаточно средств!');
+                return;
+            }
+            
+            gameActive = true;
             balance -= bet;
             updateBalance();
+            saveUserBalance();
             
             const container = document.getElementById('minesContainer');
             container.innerHTML = '';
@@ -1005,11 +967,15 @@
             const grid = document.createElement('div');
             grid.className = 'mines-grid';
             
-            // Place mines
+            // Размещаем 5 мин
             const mines = new Set();
             while (mines.size < 5) {
                 mines.add(Math.floor(Math.random() * 25));
             }
+            
+            let cells = [];
+            let safeCellsClicked = 0;
+            const totalSafe = 20; // 25 клеток - 5 мин
             
             for (let i = 0; i < 25; i++) {
                 const cell = document.createElement('div');
@@ -1018,42 +984,78 @@
                 cell.dataset.index = i;
                 
                 cell.addEventListener('click', () => {
-                    if (cell.classList.contains('revealed') || cell.classList.contains('safe')) return;
+                    if (!gameActive || cell.classList.contains('revealed') || cell.classList.contains('safe')) return;
                     
                     if (mines.has(i)) {
+                        // Мина!
                         cell.classList.add('revealed');
                         cell.innerHTML = '<i class="fas fa-bomb"></i>';
-                        showResult(false, bet, 'Вы наткнулись на мину!');
+                        gameActive = false;
+                        showMinesResult(false, bet, 'Вы наткнулись на мину!');
+                        
+                        // Показываем все мины
+                        cells.forEach((c, idx) => {
+                            if (mines.has(idx) && !c.classList.contains('revealed')) {
+                                c.classList.add('revealed');
+                                c.innerHTML = '<i class="fas fa-bomb"></i>';
+                            }
+                        });
                     } else {
+                        // Безопасная клетка
                         cell.classList.add('safe');
                         cell.innerHTML = '<i class="fas fa-gem"></i>';
+                        safeCellsClicked++;
                         
-                        // Check win
-                        const safeCells = document.querySelectorAll('.mine-cell.safe').length;
-                        const totalSafe = 25 - mines.size;
-                        if (safeCells === totalSafe) {
-                            const win = bet * 3;
-                            balance += win;
+                        // Выигрыш за каждую безопасную клетку
+                        const winPerCell = Math.floor(bet * 0.15);
+                        balance += winPerCell;
+                        updateBalance();
+                        saveUserBalance();
+                        
+                        // Проверка победы
+                        if (safeCellsClicked === totalSafe) {
+                            gameActive = false;
+                            const bonus = Math.floor(bet * 0.5);
+                            balance += bonus;
                             updateBalance();
-                            showResult(true, win, `Вы нашли все сокровища!`);
+                            saveUserBalance();
+                            showMinesResult(true, bet + bonus, 'Вы нашли все сокровища!');
                         }
                     }
                 });
                 
                 grid.appendChild(cell);
+                cells.push(cell);
             }
             
             container.appendChild(grid);
             gamesPlayedToday++;
         }
         
+        function showMinesResult(isWin, amount, message) {
+            const resultEl = document.getElementById('minesResult');
+            resultEl.className = `result-display ${isWin ? 'win' : 'lose'}`;
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 10px;">
+                    ${isWin ? '🎉 ПОБЕДА!' : '💥 ПРОИГРЫШ'}
+                </div>
+                <div>${message}</div>
+                <div style="margin-top: 10px; font-size: 28px;">
+                    ${isWin ? `+${amount} ⭐` : `-${amount} ⭐`}
+                </div>
+                <button class="game-btn" style="margin-top: 15px;" onclick="openGame('mines')">Играть снова</button>
+            `;
+        }
+        
+        // ===================== CRASH GAME =====================
         function loadCrash() {
             gameArea.innerHTML = `
                 <div style="text-align: center;">
                     <p style="color: #8a94a6; margin-bottom: 20px;">Заберите выигрыш до краха</p>
                     <div class="bet-controls">
-                        <input type="number" class="bet-input" id="crashBet" value="${currentBet}" min="10">
-                        <button class="game-btn" id="startCrash">Играть</button>
+                        <input type="number" class="bet-input" id="crashBet" value="${currentBet}" min="10" max="${balance}">
+                        <button class="game-btn" id="startCrash">Сделать ставку</button>
                         <button class="game-btn" id="cashOut" style="display:none;">Забрать</button>
                     </div>
                     <div class="crash-graph">
@@ -1068,14 +1070,23 @@
         }
         
         function startCrash() {
+            if (gameActive) return;
+            
             const bet = parseInt(document.getElementById('crashBet').value);
-            if (bet > balance || bet < 10) {
-                alert('Недостаточно средств');
+            if (isNaN(bet) || bet < 10) {
+                alert('Минимальная ставка: 10 ⭐');
                 return;
             }
             
+            if (bet > balance) {
+                alert('Недостаточно средств!');
+                return;
+            }
+            
+            gameActive = true;
             balance -= bet;
             updateBalance();
+            saveUserBalance();
             
             const cashOutBtn = document.getElementById('cashOut');
             const multiplierEl = document.getElementById('crashMultiplier');
@@ -1083,65 +1094,71 @@
             cashOutBtn.style.display = 'inline-block';
             
             let multiplier = 1.0;
-            let crashed = false;
-            let gameActive = true;
-            
-            const interval = setInterval(() => {
-                if (!gameActive) return;
-                
-                // High chance to crash
-                if (Math.random() < 0.07) {
-                    crashed = true;
-                    gameActive = false;
-                    endCrashGame(false);
-                    return;
-                }
-                
-                multiplier += 0.05;
-                multiplierEl.textContent = multiplier.toFixed(2) + 'x';
-                lineEl.style.height = `${Math.min(250, (multiplier - 1) * 30)}px`;
-            }, 200);
+            let gameInterval;
             
             cashOutBtn.onclick = () => {
                 if (gameActive) {
+                    clearInterval(gameInterval);
                     gameActive = false;
-                    clearInterval(interval);
-                    endCrashGame(true);
+                    cashOutBtn.style.display = 'none';
+                    
+                    const winAmount = Math.floor(bet * multiplier);
+                    balance += winAmount;
+                    updateBalance();
+                    saveUserBalance();
+                    
+                    showCrashResult(true, winAmount, `Вы забрали на ${multiplier.toFixed(2)}x`);
                 }
             };
             
-            // Auto crash after random time
-            setTimeout(() => {
-                if (gameActive) {
-                    crashed = true;
-                    gameActive = false;
-                    clearInterval(interval);
-                    endCrashGame(false);
+            gameInterval = setInterval(() => {
+                if (!gameActive) {
+                    clearInterval(gameInterval);
+                    return;
                 }
-            }, Math.random() * 5000 + 2000);
-            
-            function endCrashGame(manualCashOut) {
-                cashOutBtn.style.display = 'none';
-                gamesPlayedToday++;
                 
-                if (manualCashOut && Math.random() < 0.15) {
-                    const win = Math.floor(bet * multiplier);
-                    balance += win;
-                    updateBalance();
-                    showResult(true, win, `Вы забрали ${multiplier.toFixed(2)}x`);
-                } else {
-                    showResult(false, bet, `Крах на ${multiplier.toFixed(2)}x`);
+                // Увеличиваем множитель
+                multiplier += 0.05 + (Math.random() * 0.1);
+                multiplierEl.textContent = multiplier.toFixed(2) + 'x';
+                lineEl.style.height = `${Math.min(250, (multiplier - 1) * 30)}px`;
+                
+                // Шанс краха увеличивается с множителем
+                const crashChance = 0.03 + (multiplier * 0.02);
+                if (Math.random() < crashChance) {
+                    clearInterval(gameInterval);
+                    gameActive = false;
+                    cashOutBtn.style.display = 'none';
+                    showCrashResult(false, bet, `Крах на ${multiplier.toFixed(2)}x`);
                 }
-            }
+            }, 300);
+            
+            gamesPlayedToday++;
         }
         
+        function showCrashResult(isWin, amount, message) {
+            const resultEl = document.getElementById('crashResult');
+            resultEl.className = `result-display ${isWin ? 'win' : 'lose'}`;
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 10px;">
+                    ${isWin ? '💰 ПОБЕДА!' : '📉 КРАХ!'}
+                </div>
+                <div>${message}</div>
+                <div style="margin-top: 10px; font-size: 28px;">
+                    ${isWin ? `+${amount} ⭐` : `-${amount} ⭐`}
+                </div>
+                <button class="game-btn" style="margin-top: 15px;" onclick="openGame('crash')">Играть снова</button>
+            `;
+        }
+        
+        // ===================== ROULETTE GAME =====================
         function loadRoulette() {
             gameArea.innerHTML = `
                 <div style="text-align: center;">
                     <p style="color: #8a94a6; margin-bottom: 20px;">Выберите цвет и крутите рулетку</p>
                     <div class="bet-controls">
-                        <input type="number" class="bet-input" id="rouletteBet" value="${currentBet}" min="10">
-                        <select class="bet-input" id="rouletteColor">
+                        <input type="number" class="bet-input" id="rouletteBet" value="${currentBet}" min="10" max="${balance}">
+                        <select class="bet-input" id="rouletteColor" style="width: 200px;">
                             <option value="red">Красное (x2)</option>
                             <option value="black">Черное (x2)</option>
                             <option value="green">Зеленое (x14)</option>
@@ -1160,55 +1177,85 @@
         }
         
         function spinRoulette() {
+            if (gameActive) return;
+            
             const bet = parseInt(document.getElementById('rouletteBet').value);
             const color = document.getElementById('rouletteColor').value;
             
-            if (bet > balance || bet < 10) {
-                alert('Недостаточно средств');
+            if (isNaN(bet) || bet < 10) {
+                alert('Минимальная ставка: 10 ⭐');
                 return;
             }
             
+            if (bet > balance) {
+                alert('Недостаточно средств!');
+                return;
+            }
+            
+            gameActive = true;
             balance -= bet;
             updateBalance();
+            saveUserBalance();
             
             const wheel = document.getElementById('rouletteWheel');
-            const resultEl = document.getElementById('rouletteResult');
-            const spins = 5 + Math.random() * 3;
-            const winNum = Math.floor(Math.random() * 37);
-            const winColor = winNum === 0 ? 'green' : (winNum % 2 === 0 ? 'black' : 'red');
-            
-            wheel.style.transform = `rotate(${spins * 360 + winNum * (360/37)}deg)`;
+            wheel.style.transition = 'transform 0s';
+            wheel.style.transform = 'rotate(0deg)';
             
             setTimeout(() => {
-                gamesPlayedToday++;
+                wheel.style.transition = 'transform 3s cubic-bezier(0.1, 0.7, 0.1, 1)';
                 
-                if ((color === 'green' && winColor === 'green') || 
-                    (color === 'red' && winColor === 'red') || 
-                    (color === 'black' && winColor === 'black')) {
+                const spins = 3 + Math.random() * 2;
+                const winNum = Math.floor(Math.random() * 37);
+                const winColor = winNum === 0 ? 'green' : (winNum % 2 === 0 ? 'black' : 'red');
+                
+                wheel.style.transform = `rotate(${spins * 360 + winNum * (360/37)}deg)`;
+                
+                setTimeout(() => {
+                    gameActive = false;
+                    gamesPlayedToday++;
                     
-                    const multiplier = color === 'green' ? 14 : 2;
-                    const win = Math.random() < 0.1 ? bet * multiplier : 0;
-                    
-                    if (win > 0) {
-                        balance += win;
+                    if ((color === 'green' && winColor === 'green') || 
+                        (color === 'red' && winColor === 'red') || 
+                        (color === 'black' && winColor === 'black')) {
+                        
+                        const multiplier = color === 'green' ? 14 : 2;
+                        const winAmount = Math.floor(bet * multiplier);
+                        balance += winAmount;
                         updateBalance();
-                        showResult(true, win, `Выигрыш ${multiplier}x! Выпало ${winNum} (${winColor})`);
+                        saveUserBalance();
+                        
+                        showRouletteResult(true, winAmount, `Выигрыш ${multiplier}x! Выпало ${winNum} (${winColor})`);
                     } else {
-                        showResult(false, bet, `Проигрыш. Выпало ${winNum} (${winColor})`);
+                        showRouletteResult(false, bet, `Проигрыш. Выпало ${winNum} (${winColor})`);
                     }
-                } else {
-                    showResult(false, bet, `Проигрыш. Выпало ${winNum} (${winColor})`);
-                }
-            }, 4000);
+                }, 3000);
+            }, 100);
         }
         
+        function showRouletteResult(isWin, amount, message) {
+            const resultEl = document.getElementById('rouletteResult');
+            resultEl.className = `result-display ${isWin ? 'win' : 'lose'}`;
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 10px;">
+                    ${isWin ? '🎰 ДЖЕКПОТ!' : '🎲 ПОВЕЗЕТ В СЛЕДУЮЩИЙ РАЗ'}
+                </div>
+                <div>${message}</div>
+                <div style="margin-top: 10px; font-size: 28px;">
+                    ${isWin ? `+${amount} ⭐` : `-${amount} ⭐`}
+                </div>
+                <button class="game-btn" style="margin-top: 15px;" onclick="openGame('roulette')">Играть снова</button>
+            `;
+        }
+        
+        // ===================== DICE GAME =====================
         function loadDice() {
             gameArea.innerHTML = `
                 <div style="text-align: center;">
                     <p style="color: #8a94a6; margin-bottom: 20px;">Бросьте кости на удачу</p>
                     <div class="bet-controls">
-                        <input type="number" class="bet-input" id="diceBet" value="${currentBet}" min="10">
-                        <button class="game-btn" id="rollDice">Бросить</button>
+                        <input type="number" class="bet-input" id="diceBet" value="${currentBet}" min="10" max="${balance}">
+                        <button class="game-btn" id="rollDice">Бросить кости</button>
                     </div>
                     <div class="dice-container">
                         <div class="dice" id="dice1">?</div>
@@ -1222,14 +1269,23 @@
         }
         
         function rollDice() {
+            if (gameActive) return;
+            
             const bet = parseInt(document.getElementById('diceBet').value);
-            if (bet > balance || bet < 10) {
-                alert('Недостаточно средств');
+            if (isNaN(bet) || bet < 10) {
+                alert('Минимальная ставка: 10 ⭐');
                 return;
             }
             
+            if (bet > balance) {
+                alert('Недостаточно средств!');
+                return;
+            }
+            
+            gameActive = true;
             balance -= bet;
             updateBalance();
+            saveUserBalance();
             
             const dice1 = document.getElementById('dice1');
             const dice2 = document.getElementById('dice2');
@@ -1240,8 +1296,9 @@
                 dice2.textContent = Math.floor(Math.random() * 6) + 1;
                 rolls++;
                 
-                if (rolls > 10) {
+                if (rolls > 15) {
                     clearInterval(rollInterval);
+                    
                     const val1 = Math.floor(Math.random() * 6) + 1;
                     const val2 = Math.floor(Math.random() * 6) + 1;
                     const sum = val1 + val2;
@@ -1249,31 +1306,63 @@
                     dice1.textContent = val1;
                     dice2.textContent = val2;
                     
-                    gamesPlayedToday++;
-                    
-                    if (sum > 7 && Math.random() < 0.15) {
-                        const win = bet * 2;
-                        balance += win;
-                        updateBalance();
-                        showResult(true, win, `Выигрыш! Сумма: ${sum}`);
-                    } else {
-                        showResult(false, bet, `Проигрыш. Сумма: ${sum}`);
-                    }
+                    setTimeout(() => {
+                        gameActive = false;
+                        gamesPlayedToday++;
+                        
+                        // Правила: сумма > 7 = победа x2, двойной дубль = победа x3
+                        let multiplier = 0;
+                        if (val1 === val2) {
+                            // Двойной дубль
+                            multiplier = 3;
+                        } else if (sum > 7) {
+                            multiplier = 2;
+                        } else if (sum === 7) {
+                            multiplier = 1.5;
+                        }
+                        
+                        if (multiplier > 0) {
+                            const winAmount = Math.floor(bet * multiplier);
+                            balance += winAmount;
+                            updateBalance();
+                            saveUserBalance();
+                            showDiceResult(true, winAmount, `Сумма: ${sum} (${val1}+${val2}) ${val1 === val2 ? 'ДУБЛЬ!' : ''}`);
+                        } else {
+                            showDiceResult(false, bet, `Сумма: ${sum} (${val1}+${val2})`);
+                        }
+                    }, 500);
                 }
-            }, 100);
+            }, 80);
         }
         
+        function showDiceResult(isWin, amount, message) {
+            const resultEl = document.getElementById('diceResult');
+            resultEl.className = `result-display ${isWin ? 'win' : 'lose'}`;
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 10px;">
+                    ${isWin ? '🎯 ВЫИГРЫШ!' : '🎲 ПРОИГРЫШ'}
+                </div>
+                <div>${message}</div>
+                <div style="margin-top: 10px; font-size: 28px;">
+                    ${isWin ? `+${amount} ⭐` : `-${amount} ⭐`}
+                </div>
+                <button class="game-btn" style="margin-top: 15px;" onclick="openGame('dice')">Играть снова</button>
+            `;
+        }
+        
+        // ===================== WHEEL GAME =====================
         function loadWheel() {
             gameArea.innerHTML = `
                 <div style="text-align: center;">
                     <p style="color: #8a94a6; margin-bottom: 20px;">Крутите колесо удачи</p>
                     <div class="bet-controls">
-                        <input type="number" class="bet-input" id="wheelBet" value="${currentBet}" min="10">
-                        <button class="game-btn" id="spinWheel">Крутить</button>
+                        <input type="number" class="bet-input" id="wheelBet" value="${currentBet}" min="10" max="${balance}">
+                        <button class="game-btn" id="spinWheel">Крутить колесо</button>
                     </div>
                     <div style="width: 300px; height: 300px; margin: 30px auto; position: relative;">
                         <div style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); color: #f0b90b; font-size: 30px;">▼</div>
-                        <div style="width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(
+                        <div id="wheel" style="width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(
                             #e74c3c 0deg 45deg,
                             #f0b90b 45deg 90deg,
                             #2ecc71 90deg 135deg,
@@ -1282,97 +1371,220 @@
                             #e74c3c 225deg 270deg,
                             #f0b90b 270deg 315deg,
                             #2ecc71 315deg 360deg
-                        ); transition: transform 3s;"></div>
+                        ); transition: transform 3s cubic-bezier(0.1, 0.7, 0.1, 1);"></div>
                     </div>
                     <div class="result-display" id="wheelResult"></div>
                 </div>
             `;
             
-            document.getElementById('spinWheel').addEventListener('click', () => {
-                const bet = parseInt(document.getElementById('wheelBet').value);
-                if (bet > balance || bet < 10) {
-                    alert('Недостаточно средств');
-                    return;
-                }
-                
-                balance -= bet;
-                updateBalance();
-                gamesPlayedToday++;
-                
-                setTimeout(() => {
-                    if (Math.random() < 0.1) {
-                        const win = bet * 5;
-                        balance += win;
-                        updateBalance();
-                        showResult(true, win, 'Джекпот на колесе!');
-                    } else {
-                        showResult(false, bet, 'Повезет в следующий раз');
-                    }
-                }, 3000);
-            });
+            document.getElementById('spinWheel').addEventListener('click', spinWheel);
         }
         
+        function spinWheel() {
+            if (gameActive) return;
+            
+            const bet = parseInt(document.getElementById('wheelBet').value);
+            if (isNaN(bet) || bet < 10) {
+                alert('Минимальная ставка: 10 ⭐');
+                return;
+            }
+            
+            if (bet > balance) {
+                alert('Недостаточно средств!');
+                return;
+            }
+            
+            gameActive = true;
+            balance -= bet;
+            updateBalance();
+            saveUserBalance();
+            
+            const wheel = document.getElementById('wheel');
+            wheel.style.transition = 'transform 0s';
+            wheel.style.transform = 'rotate(0deg)';
+            
+            setTimeout(() => {
+                wheel.style.transition = 'transform 3s cubic-bezier(0.1, 0.7, 0.1, 1)';
+                
+                const spins = 5 + Math.random() * 3;
+                const segment = Math.floor(Math.random() * 8);
+                const degrees = segment * 45;
+                
+                wheel.style.transform = `rotate(${spins * 360 + degrees}deg)`;
+                
+                setTimeout(() => {
+                    gameActive = false;
+                    gamesPlayedToday++;
+                    
+                    const multipliers = [0.5, 2, 5, 1, 3, 0.5, 10, 2];
+                    const multiplier = multipliers[segment];
+                    
+                    if (multiplier > 0) {
+                        const winAmount = Math.floor(bet * multiplier);
+                        balance += winAmount;
+                        updateBalance();
+                        saveUserBalance();
+                        
+                        let message = '';
+                        if (multiplier === 10) message = '🎰 ДЖЕКПОТ НА КОЛЕСЕ!';
+                        else if (multiplier >= 5) message = '🎉 ОГРОМНЫЙ ВЫИГРЫШ!';
+                        else if (multiplier >= 2) message = '💰 ХОРОШИЙ ВЫИГРЫШ!';
+                        else message = '🎁 ВОЗВРАТ СТАВКИ';
+                        
+                        showWheelResult(true, winAmount, `${message} (x${multiplier})`);
+                    } else {
+                        showWheelResult(false, bet, 'К сожалению, вы проиграли');
+                    }
+                }, 3000);
+            }, 100);
+        }
+        
+        function showWheelResult(isWin, amount, message) {
+            const resultEl = document.getElementById('wheelResult');
+            resultEl.className = `result-display ${isWin ? 'win' : 'lose'}`;
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 10px;">
+                    ${isWin ? '🎡 ПОБЕДА!' : '🌀 ПРОИГРЫШ'}
+                </div>
+                <div>${message}</div>
+                <div style="margin-top: 10px; font-size: 28px;">
+                    ${isWin ? `+${amount} ⭐` : `-${amount} ⭐`}
+                </div>
+                <button class="game-btn" style="margin-top: 15px;" onclick="openGame('wheel')">Играть снова</button>
+            `;
+        }
+        
+        // ===================== SLOTS GAME =====================
         function loadSlots() {
             gameArea.innerHTML = `
                 <div style="text-align: center;">
                     <p style="color: #8a94a6; margin-bottom: 20px;">Крутите слоты для выигрыша</p>
                     <div class="bet-controls">
-                        <input type="number" class="bet-input" id="slotsBet" value="${currentBet}" min="10">
-                        <button class="game-btn" id="spinSlots">Крутить</button>
+                        <input type="number" class="bet-input" id="slotsBet" value="${currentBet}" min="10" max="${balance}">
+                        <button class="game-btn" id="spinSlots">Крутить слоты</button>
                     </div>
                     <div style="display: flex; justify-content: center; gap: 20px; margin: 40px 0;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f0b90b, #ffd700); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 40px;" id="slot1">🍒</div>
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f0b90b, #ffd700); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 40px;" id="slot2">🍒</div>
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f0b90b, #ffd700); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 40px;" id="slot3">🍒</div>
+                        <div class="slot" id="slot1">🍒</div>
+                        <div class="slot" id="slot2">🍒</div>
+                        <div class="slot" id="slot3">🍒</div>
                     </div>
                     <div class="result-display" id="slotsResult"></div>
                 </div>
             `;
             
-            // Slots implementation similar to other games
-            document.getElementById('spinSlots').addEventListener('click', () => {
-                const bet = parseInt(document.getElementById('slotsBet').value);
-                if (bet > balance || bet < 10) {
-                    alert('Недостаточно средств');
-                    return;
-                }
-                
-                balance -= bet;
-                updateBalance();
-                gamesPlayedToday++;
-                
-                setTimeout(() => {
-                    if (Math.random() < 0.08) {
-                        const win = bet * 10;
-                        balance += win;
-                        updateBalance();
-                        showResult(true, win, 'Джекпот в слотах!');
-                    } else {
-                        showResult(false, bet, 'Попробуйте еще раз');
-                    }
-                }, 2000);
+            // Стили для слотов
+            document.querySelectorAll('.slot').forEach(slot => {
+                slot.style.cssText = `
+                    width: 80px;
+                    height: 80px;
+                    background: linear-gradient(135deg, #f0b90b, #ffd700);
+                    border-radius: 15px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 40px;
+                    font-weight: bold;
+                `;
             });
+            
+            document.getElementById('spinSlots').addEventListener('click', spinSlots);
         }
         
-        function showResult(isWin, amount, message) {
-            const resultEl = document.createElement('div');
+        function spinSlots() {
+            if (gameActive) return;
+            
+            const bet = parseInt(document.getElementById('slotsBet').value);
+            if (isNaN(bet) || bet < 10) {
+                alert('Минимальная ставка: 10 ⭐');
+                return;
+            }
+            
+            if (bet > balance) {
+                alert('Недостаточно средств!');
+                return;
+            }
+            
+            gameActive = true;
+            balance -= bet;
+            updateBalance();
+            saveUserBalance();
+            
+            const symbols = ['🍒', '🍋', '🍊', '🍇', '⭐', '🔔', '7️⃣', '💎'];
+            let spins = 0;
+            
+            const spinInterval = setInterval(() => {
+                document.getElementById('slot1').textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                document.getElementById('slot2').textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                document.getElementById('slot3').textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                spins++;
+                
+                if (spins > 20) {
+                    clearInterval(spinInterval);
+                    
+                    setTimeout(() => {
+                        gameActive = false;
+                        gamesPlayedToday++;
+                        
+                        const slot1 = document.getElementById('slot1').textContent;
+                        const slot2 = document.getElementById('slot2').textContent;
+                        const slot3 = document.getElementById('slot3').textContent;
+                        
+                        let multiplier = 0;
+                        let message = '';
+                        
+                        // Проверка комбинаций
+                        if (slot1 === '💎' && slot2 === '💎' && slot3 === '💎') {
+                            multiplier = 100;
+                            message = '💎💎💎 СУПЕР ДЖЕКПОТ!';
+                        } else if (slot1 === '7️⃣' && slot2 === '7️⃣' && slot3 === '7️⃣') {
+                            multiplier = 50;
+                            message = '7️⃣7️⃣7️⃣ ДЖЕКПОТ!';
+                        } else if (slot1 === slot2 && slot2 === slot3) {
+                            multiplier = 10;
+                            message = 'ТРИ ОДИНАКОВЫХ СИМВОЛА!';
+                        } else if (slot1 === slot2 || slot2 === slot3 || slot1 === slot3) {
+                            multiplier = 2;
+                            message = 'ДВА ОДИНАКОВЫХ СИМВОЛА!';
+                        } else if (slot1 === '⭐' || slot2 === '⭐' || slot3 === '⭐') {
+                            multiplier = 1.5;
+                            message = 'СИМВОЛ ЗВЕЗДЫ!';
+                        }
+                        
+                        if (multiplier > 0) {
+                            const winAmount = Math.floor(bet * multiplier);
+                            balance += winAmount;
+                            updateBalance();
+                            saveUserBalance();
+                            showSlotsResult(true, winAmount, `${message} (x${multiplier})`);
+                        } else {
+                            showSlotsResult(false, bet, 'Попробуйте еще раз!');
+                        }
+                    }, 300);
+                }
+            }, 100);
+        }
+        
+        function showSlotsResult(isWin, amount, message) {
+            const resultEl = document.getElementById('slotsResult');
             resultEl.className = `result-display ${isWin ? 'win' : 'lose'}`;
             resultEl.style.display = 'block';
             resultEl.innerHTML = `
                 <div style="font-size: 24px; margin-bottom: 10px;">
-                    ${isWin ? '🎉 ПОБЕДА!' : '😔 ПРОИГРЫШ'}
+                    ${isWin ? '🎰 ВЫИГРЫШ!' : '🎲 ПРОИГРЫШ'}
                 </div>
                 <div>${message}</div>
                 <div style="margin-top: 10px; font-size: 28px;">
-                    ${isWin ? `+${amount} ₽` : `-${amount} ₽`}
+                    ${isWin ? `+${amount} ⭐` : `-${amount} ⭐`}
                 </div>
+                <button class="game-btn" style="margin-top: 15px;" onclick="openGame('slots')">Играть снова</button>
             `;
-            
-            gameArea.appendChild(resultEl);
         }
         
+        // ===================== UTILITY FUNCTIONS =====================
         function updateBalance() {
-            balanceEl.textContent = balance + ' ₽';
+            balanceEl.textContent = balance + ' ⭐';
+            saveUserBalance();
         }
         
         function showNotification(message) {
@@ -1388,9 +1600,24 @@
                 z-index: 3000;
                 box-shadow: 0 5px 20px rgba(0,0,0,0.3);
                 animation: slideIn 0.3s ease;
+                max-width: 300px;
             `;
             notification.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
             document.body.appendChild(notification);
+            
+            // Добавляем анимацию
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
             
             setTimeout(() => {
                 notification.style.animation = 'slideOut 0.3s ease';
@@ -1399,188 +1626,137 @@
         }
         
         function setupEventListeners() {
-            closeModal.addEventListener('click', () => gameModal.style.display = 'none');
-            window.addEventListener('click', (e) => {
-                if (e.target === gameModal) gameModal.style.display = 'none';
+            closeModal.addEventListener('click', () => {
+                gameModal.style.display = 'none';
+                gameActive = false;
             });
             
+            window.addEventListener('click', (e) => {
+                if (e.target === gameModal) {
+                    gameModal.style.display = 'none';
+                    gameActive = false;
+                }
+            });
+            
+            // Кнопки в хедере
             document.getElementById('depositBtn').addEventListener('click', () => {
-                alert('Пополнение осуществляется через нашего Telegram-бота: @BezdarMoneybot\n\nПосле пополнения в боте, баланс обновится автоматически.');
+                if (!isAuthorized) {
+                    alert('Сначала войдите через Telegram!');
+                    return;
+                }
+                alert('Пополнение через Telegram бота:\n\n1. Откройте @BezdarMoneybot\n2. Нажмите "⭐ Пополнить"\n3. Выберите сумму\n4. После оплаты баланс обновится');
             });
             
             document.getElementById('withdrawBtn').addEventListener('click', () => {
-                if (balance < 100) {
-                    alert('Минимальная сумма для вывода: 100 ₽');
+                if (!isAuthorized) {
+                    alert('Сначала войдите через Telegram!');
                     return;
                 }
-                alert(`Заявка на вывод ${balance} ₽ принята!\n\nСредства будут переведены в течение 24 часов через нашего бота.`);
+                if (balance < 100) {
+                    alert('Минимальная сумма для вывода: 100 ⭐');
+                    return;
+                }
+                alert(`Заявка на вывод ${balance} ⭐ принята!\n\nОткройте Telegram бота для подтверждения вывода.`);
             });
             
             document.getElementById('bonusBtn').addEventListener('click', () => {
-                alert('Бонусная система временно недоступна. Следите за обновлениями!');
+                alert('🎁 Бонусная система\n\n• 5% кешбек каждую неделю\n• Промокоды для постоянных игроков\n• Специальные бонусы по выходным');
             });
         }
-// Кнопка синхронизации с Telegram
-    document.getElementById('depositBtn').insertAdjacentHTML('afterend', `
-        <button class="btn" id="tgSyncBtn" style="background: linear-gradient(135deg, #0088cc, #005999);">
-            <i class="fab fa-telegram"></i> Синхр.
-        </button>
-    `);
-    
-    document.getElementById('tgSyncBtn').addEventListener('click', function() {
-        if (!tgUser) {
-            alert('Сначала войдите через Telegram бота!\n\nНажмите на кнопку "Войти через Telegram" выше.');
-            return;
-        }
         
-        // Демо-синхронизация (в реальности здесь будет запрос к API)
-        const newStars = Math.floor(Math.random() * 200) + 50;
-        balance += newStars;
-        updateBalance();
-        saveBalanceToStorage();
-        
-        showNotification(`✅ Синхронизировано с ботом! +${newStars} ⭐`);
-    });
-    
-    // Обновляем функцию showNotification для сохранения баланса
-    const originalShowNotification = window.showNotification;
-    window.showNotification = function(message) {
-        if (originalShowNotification) {
-            originalShowNotification(message);
-        }
-        saveBalanceToStorage();
-    };
-}
-        
-        // Initialize when page loads
+        // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', init);
-        // Функция для проверки баланса через бота
-async function checkBalance() {
-    // Здесь должна быть интеграция с вашим API
-    // Для демо используем localStorage
-    const savedBalance = localStorage.getItem('tg_stars_balance');
-    if (savedBalance) {
-        balance = parseFloat(savedBalance);
-        updateBalance();
-    }
-}
-
-// Функция для синхронизации с ботом
-function syncWithBot() {
-    // В реальном проекте здесь должен быть Webhook или API запрос
-    // Для демо имитируем синхронизацию
-    showNotification('✅ Баланс синхронизирован с ботом');
-}
-
-// Добавить в init() функцию:
-function init() {
-    updateBalance();
-    loadGames();
-    setupEventListeners();
-    
-    // Проверяем баланс при загрузке
-    checkBalance();
-    
-    // Демо: имитация синхронизации с ботом
-    setInterval(syncWithBot, 60000); // Каждую минуту
-}
-
-// Добавить кнопку синхронизации в баланс
-const balanceCard = document.querySelector('.balance-card');
-balanceCard.innerHTML += `
-    <button class="btn btn-sync" id="syncBtn" style="margin-left: 10px; padding: 8px 15px; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
-        <i class="fas fa-sync-alt"></i>
-    </button>
-`;
-
-document.getElementById('syncBtn').addEventListener('click', syncWithBot);
-        // Функция для проверки баланса через бота
-async function checkBalance() {
-    // Здесь должна быть интеграция с вашим API
-    // Для демо используем localStorage
-    const savedBalance = localStorage.getItem('tg_stars_balance');
-    if (savedBalance) {
-        balance = parseFloat(savedBalance);
-        updateBalance();
-    }
-}
-
-// Функция для синхронизации с ботом
-function syncWithBot() {
-    // В реальном проекте здесь должен быть Webhook или API запрос
-    // Для демо имитируем синхронизацию
-    showNotification('✅ Баланс синхронизирован с ботом');
-}
-
-// Добавить в init() функцию:
-function init() {
-    updateBalance();
-    loadGames();
-    setupEventListeners();
-    
-    // Проверяем баланс при загрузке
-    checkBalance();
-    
-    // Демо: имитация синхронизации с ботом
-    setInterval(syncWithBot, 60000); // Каждую минуту
-}
-
-// Добавить кнопку синхронизации в баланс
-const balanceCard = document.querySelector('.balance-card');
-balanceCard.innerHTML += `
-    <button class="btn btn-sync" id="syncBtn" style="margin-left: 10px; padding: 8px 15px; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
-        <i class="fas fa-sync-alt"></i>
-    </button>
-`;
-
-document.getElementById('syncBtn').addEventListener('click', syncWithBot);
-        // Интеграция с Telegram ботом для баланса звезд
-const TELEGRAM_BOT_TOKEN = '7634324714:AAHnJR3SD0M47tPols4rirVsBpT3GJTQnZQ';
-
-// Функция для обновления баланса (демо-версия)
-function updateStarsBalance(stars) {
-    balance = stars; // 1 звезда = 1 рубль в демо
-    updateBalance();
-    localStorage.setItem('tg_stars_balance', stars);
-    showNotification(`⭐ Баланс обновлен: ${stars} звезд`);
-}
-
-// Проверить баланс при загрузке
-function checkStarsBalance() {
-    const savedStars = localStorage.getItem('tg_stars_balance');
-    if (savedStars) {
-        updateStarsBalance(parseInt(savedStars));
-    }
-}
-
-// Добавить кнопку синхронизации
-const userInfo = document.querySelector('.user-info');
-userInfo.innerHTML += `
-    <button class="btn" id="syncStarsBtn" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">
-        <i class="fas fa-sync-alt"></i> Синхронизация
-    </button>
-`;
-
-document.getElementById('syncStarsBtn').addEventListener('click', () => {
-    showNotification('🔄 Запрос на синхронизацию отправлен в бота');
-    // В реальном проекте здесь будет запрос к вашему API
-});
-
-// Инициализировать при загрузке
-document.addEventListener('DOMContentLoaded', () => {
-    init();
-    checkStarsBalance();
-    
-    // Демо: имитация получения звезд от бота
-    setInterval(() => {
-        if (Math.random() < 0.1) {
-            const newStars = Math.floor(Math.random() * 50) + 10;
-            const current = parseInt(localStorage.getItem('tg_stars_balance') || '0');
-            updateStarsBalance(current + newStars);
-            showNotification(`✨ Бот зачислил ${newStars} звезд!`);
-        }
-    }, 30000);
-});
     </script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-coins"></i>
+                    BezdarMoney
+                </div>
+                
+                <div class="user-info">
+                    <div class="balance-card">
+                        <i class="fas fa-wallet balance-icon"></i>
+                        <div class="balance-text">
+                            <span class="balance-label">Баланс</span>
+                            <span class="balance-amount" id="balance">0 ⭐</span>
+                        </div>
+                    </div>
+                    
+                    <div class="balance-controls">
+                        <button class="btn btn-deposit" id="depositBtn">Пополнить</button>
+                        <button class="btn btn-withdraw" id="withdrawBtn">Вывести</button>
+                        <button class="btn btn-bonus" id="bonusBtn">Бонусы</button>
+                        <button class="btn btn-telegram" id="tgSyncBtn" style="display: none;">
+                            <i class="fab fa-telegram"></i> Синхр.
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="games-section">
+            <h2 class="section-title">Игровые автоматы</h2>
+            
+            <div class="games-grid" id="gamesGrid">
+                <!-- Games loaded by JavaScript -->
+            </div>
+            
+            <div class="bonus-section">
+                <h3 class="bonus-title"><i class="fas fa-gift"></i> Бонусная система</h3>
+                <div class="bonus-content">
+                    <div class="bonus-item">
+                        <h4>Кешбек 5%</h4>
+                        <p>Возвращаем часть проигранных средств каждую неделю</p>
+                        <div class="warning">
+                            <i class="fas fa-exclamation-circle"></i>
+                            Только для авторизованных игроков
+                        </div>
+                    </div>
+                    <div class="bonus-item">
+                        <h4>Промокоды</h4>
+                        <p>Специальные коды для получения бонусов</p>
+                        <div class="warning">
+                            <i class="fas fa-exclamation-circle"></i>
+                            В Telegram боте
+                        </div>
+                    </div>
+                    <div class="bonus-item">
+                        <h4>Telegram Stars</h4>
+                        <p>Пополняйте и выводите через Telegram Stars</p>
+                        <div class="warning">
+                            <i class="fas fa-star"></i>
+                            Без комиссии
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bot-section">
+                <h3 class="bot-title"><i class="fab fa-telegram"></i> Telegram бот</h3>
+                <p>Все финансовые операции через нашего бота. Баланс синхронизируется автоматически.</p>
+                <a href="https://t.me/BezdarMoneybot" target="_blank" class="bot-link">
+                    <i class="fab fa-telegram"></i> @BezdarMoneybot
+                </a>
+                <p>После пополнения в боте, средства автоматически появятся на вашем счете</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Modal -->
+    <div class="game-modal" id="gameModal">
+        <div class="modal-content" id="modalContent">
+            <span class="close-modal" id="closeModal">&times;</span>
+            <h2 class="game-modal-title" id="gameModalTitle">Игра</h2>
+            <div class="game-area" id="gameArea">
+                <!-- Game content loaded here -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>
